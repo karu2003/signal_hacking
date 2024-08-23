@@ -120,3 +120,17 @@ def find_chirp_intervals(
     if in_chirp:
         intervals.append((chirp_start, chirp_end))
     return intervals
+
+def fill_max2one(in_array):
+    out_s = np.zeros_like(in_array)
+    max_indexs = []
+    for count, m in enumerate(in_array):
+        max_index = np.argmax(m)
+        max_indexs.append(max_index)
+        # f1D.append(out_s[count][max_index])
+        in_array[count].fill(0)
+
+    for count, m in enumerate(max_indexs):
+        out_s[count][m] = 1.0
+
+    return max_indexs, out_s
