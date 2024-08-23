@@ -3,34 +3,12 @@ import matplotlib.pyplot as plt
 from barbutils import generate_barb, load_barb
 import numpy as np
 import fcwt
+import sys
 
+# sys.path.insert(1, os.path.join(sys.path[0], ".."))
+# sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-# Helper functions
-def threshold_2Darray_Level(in_array, threshold):
-    in_array[in_array < threshold] = 0
-    return in_array
-
-
-def detect_chirp_in_window(
-    window, fs, f0, f1, num_coeffs=100, threshold_avg=0.02, threshold=0.1
-):
-    freqs, cwt_matrix = fcwt.cwt(window, fs, f0, f1, num_coeffs)
-    cwt_matrix = threshold_2Darray_Level(cwt_matrix, threshold)
-    magnitude = np.abs(cwt_matrix) ** 2
-    avg_magnitude = np.average(magnitude, axis=0)
-    indices = np.where(avg_magnitude > threshold_avg)[0]
-    if len(indices) > 20:
-        indices = [indices[0], indices[-1]]
-    else:
-        indices = []
-    chirp_detected = len(indices) > 0
-
-    # plt.figure(figsize=(10, 4))
-    # plt.plot(np.abs(magnitude), label='Signal Magnitude')
-    # plt.show()
-
-    return chirp_detected, indices, avg_magnitude
-
+import signal_helper as sh
 
 def find_chirp_intervals(
     signal,
@@ -48,7 +26,7 @@ def find_chirp_intervals(
     chirp_start = None
     for i in range(0, len(signal) - window_size + 1, window_size // 2):
         window = signal[i : i + window_size]
-        detected, indices, _ = detect_chirp_in_window(
+        detected, indices, _ = sh.detect_chirp_in_window(
             window, fs, f0, f1, num_coeffs, threshold_avg, threshold
         )
         if detected:
