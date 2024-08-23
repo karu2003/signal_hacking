@@ -110,12 +110,15 @@ magnitude = np.abs(out)
 ax[2].imshow(magnitude, aspect="auto", extent=[0, len(first_frame), f0, f1])
 ax[2].set_title("Вейвлет-преобразование")
 
-max_indexs, out_s = sh.fill_max2one(magnitude)
-print("Shape of out_s:", out_s.shape)
+# max_indexs, out_s = sh.fill_max2one(magnitude)
+phase = np.angle(out)
+# print("Shape of out_s:", out_s.shape)
 
 # ax[3].imshow(np.abs(out_s), aspect="auto", extent=[0, len(first_frame), f0, f1])
 # ax[3].plot(out_s, label="Максимумы")
-ax[3].plot(max_indexs, label="Максимумы")
+# ax[3].plot(phase, label="Фаза")
+plt.imshow(phase, extent=[0, len(first_frame), f0, f1],
+           aspect='auto', cmap='jet')
 
 plt.tight_layout()
 plt.show()
