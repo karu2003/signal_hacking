@@ -7,42 +7,7 @@ import sys
 
 # sys.path.insert(1, os.path.join(sys.path[0], ".."))
 # sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
 import signal_helper as sh
-
-def find_chirp_intervals(
-    signal,
-    fs,
-    f0,
-    f1,
-    window_duration=0.004,
-    num_coeffs=100,
-    threshold_avg=0.02,
-    threshold=0.9,
-):
-    window_size = int(window_duration * fs)
-    intervals = []
-    in_chirp = False
-    chirp_start = None
-    for i in range(0, len(signal) - window_size + 1, window_size // 2):
-        window = signal[i : i + window_size]
-        detected, indices, _ = sh.detect_chirp_in_window(
-            window, fs, f0, f1, num_coeffs, threshold_avg, threshold
-        )
-        if detected:
-            if not in_chirp:
-                chirp_start = (i + indices[0]) / fs
-                in_chirp = True
-            chirp_end = (i + indices[-1] + 1) / fs
-        else:
-            if in_chirp:
-                intervals.append((chirp_start, chirp_end))
-                in_chirp = False
-    if in_chirp:
-        intervals.append((chirp_start, chirp_end))
-    return intervals
-
-
 script_path = os.path.dirname(os.path.realpath(__file__))
 
 # Чтение данных из файла
@@ -63,7 +28,7 @@ sample_rate = 1e6  # sample_rate
 print(f"Sample rate: {sample_rate}")
 print(f"Lenght of signal: {len(signal_data)}")
 
-intervals = find_chirp_intervals(
+intervals = sh.find_chirp_intervals(
     signal_data, int(sample_rate), f0, f1, window_duration, fn, threshold_avg, threshold
 )
 
