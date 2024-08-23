@@ -30,6 +30,30 @@ sample_rate = 1e6  # Sampling frequency
 print(f"Частота дискретизации: {sample_rate}")
 print(f"Длина сигнала: {len(signal_data)}")
 
+# Найти индексы, где сигнал переходит через ноль
+zero_crossings = np.where(np.diff(np.signbit(signal_data)))[0]
+
+print(f"Количество переходов через ноль: {len(zero_crossings)}")
+
+# Определить начало первого пакета (первый переход через ноль)
+start_index = zero_crossings[0]
+
+# Определить конец первого пакета (последний переход через ноль перед паузой)
+# Предполагаем, что пауза определяется отсутствием переходов через ноль в течение определенного времени
+for i in range(1, len(zero_crossings)):
+    if zero_crossings[i] - zero_crossings[i-1] > 90:  # 10 - это пример порога, определяющего паузу
+        end_index = zero_crossings[i-1]
+        break
+else:
+    end_index = zero_crossings[-1]  # Если паузы нет, берем последний пере1ход
+
+# Вычисляем ширину первого пакета
+signal_width = end_index - start_index
+
+print(f"Индекс начала первого пакета: {start_index/sample_rate}")
+print(f"Индекс конца первого пакета: {end_index/sample_rate}")
+print(f"Ширина первого пакета: {signal_width/sample_rate} секунд")
+
 # Вычислить огибающую CWT
 cwt_envelope = sh.calculate_cwt_envelope(signal_data, sample_rate, f0, f1, fn)
 
@@ -43,7 +67,9 @@ print(f"Количество интервалов: {len(intervals)}")
 print(f"Ширина импульсов: {[f'{width:.4f}' for width in pulse_widths]}")
 
 
-fig, ax1 = plt.subplots(figsize=(10, 4))
+# fig, ax1 = plt.subplots(figsize=(10, 4))
+fig, ax = plt.subplots(4, 1, figsize=(12, 8))
+
 time = np.arange(len(signal_data)) / sample_rate
 max_signal = 2
 lightred = "#FF7F7F"
@@ -51,26 +77,45 @@ lightblue = "#ADD8E6"
 lightgreen = "#90EE90"
 
 # Построить график сигнала с интервалами и огибающей CWT
-ax1.plot(time, signal_data, label="Сигнал")
-ax1.plot(time, cwt_envelope, color="orange", linestyle="--", label="Огибающая CWT")
+ax[0].plot(time, signal_data, label="Сигнал")
+ax[0].plot(time, cwt_envelope, color="orange", linestyle="--", label="Огибающая CWT")
 for (
     start,
     end,
 ) in intervals:
-    ax1.axvline(start, color="red", linestyle="--")
-    ax1.axvline(end, color="green", linestyle="--")
-    ax1.fill_betweenx(
+    ax[0].axvline(start, color="red", linestyle="--")
+    ax[0].axvline(end, color="green", linestyle="--")
+    ax[0].fill_betweenx(
         y=[-max_signal, max_signal], x1=start, x2=end, color=lightred, alpha=0.3
     )
 for start, end, _ in pauses:
-    ax1.fill_betweenx(
+    ax[0].fill_betweenx(
         y=[-max_signal, max_signal], x1=start, x2=end, color=lightgreen, alpha=0.3
     )
-ax1.set_title(f"Сигнал из файла {filename}")
-ax1.set_xlabel("Время (с)")
-ax1.set_ylabel("Амплитуда сигнала")
-ax1.grid(True)
-ax1.legend(loc="upper right")
+ax[0].set_title(f"Сигнал из файла {filename}")
+ax[0].set_xlabel("Время (с)")
+ax[0].set_ylabel("Амплитуда сигнала")
+ax[0].grid(True)
+ax[0].legend(loc="upper right")
+
+first_frame = signal_data[start_index:end_index]
+
+ax[1].plot(first_frame, label="1 Сигнал")
+ax[1].set_title("Первый пакет")
+ax[1].grid(True)
+
+# Построить график вейвлет-преобразования
+freqs, out = fcwt.cwt(first_frame, int(sample_rate), f0, f1, fn)
+magnitude = np.abs(out)
+ax[2].imshow(magnitude, aspect="auto", extent=[0, len(first_frame), f0, f1])
+ax[2].set_title("Вейвлет-преобразование")
+
+max_indexs, out_s = sh.fill_max2one(magnitude)
+print("Shape of out_s:", out_s.shape)
+
+# ax[3].imshow(np.abs(out_s), aspect="auto", extent=[0, len(first_frame), f0, f1])
+# ax[3].plot(out_s, label="Максимумы")
+ax[3].plot(max_indexs, label="Максимумы")
 
 plt.tight_layout()
 plt.show()
