@@ -1,18 +1,20 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.signal import hilbert
+from scipy.signal import hilbert, sweep_poly, correlate
 from barbutils import load_barb
 import fcwt
-
 import signal_helper as sh
+from scipy.optimize import curve_fit
+from numpy.polynomial.polynomial import Polynomial
+from scipy.interpolate import interp1d
 
 # Пример использования
 script_path = os.path.dirname(os.path.realpath(__file__))
 # filename = "1834cs1.barb"
 filename = "1707cs1.barb"
 
-f0 = 7000 # Начальная частота
+f0 = 7000  # Начальная частота
 f1 = 17000  # Конечная частота
 fn = 200  # Количество коэффициентов
 threshold = 0.6  # Пороговое значение для огибающей CWT
@@ -41,8 +43,10 @@ start_index = zero_crossings[0]
 # Определить конец первого пакета (последний переход через ноль перед паузой)
 # Предполагаем, что пауза определяется отсутствием переходов через ноль в течение определенного времени
 for i in range(1, len(zero_crossings)):
-    if zero_crossings[i] - zero_crossings[i-1] > 90:  # 10 - это пример порога, определяющего паузу
-        end_index = zero_crossings[i-1]
+    if (
+        zero_crossings[i] - zero_crossings[i - 1] > 90
+    ):  # 10 - это пример порога, определяющего паузу
+        end_index = zero_crossings[i - 1]
         break
 else:
     end_index = zero_crossings[-1]  # Если паузы нет, берем последний пере1ход
@@ -68,7 +72,7 @@ print(f"Ширина импульсов: {[f'{width:.4f}' for width in pulse_wid
 
 
 # fig, ax1 = plt.subplots(figsize=(10, 4))
-fig, ax = plt.subplots(4, 1, figsize=(12, 8))
+fig, ax = plt.subplots(5, 1, figsize=(12, 10))
 
 time = np.arange(len(signal_data)) / sample_rate
 max_signal = 2
@@ -110,15 +114,154 @@ magnitude = np.abs(out)
 ax[2].imshow(magnitude, aspect="auto", extent=[0, len(first_frame), f0, f1])
 ax[2].set_title("Вейвлет-преобразование")
 
-# max_indexs, out_s = sh.fill_max2one(magnitude)
-phase = np.angle(out)
-# print("Shape of out_s:", out_s.shape)
 
-# ax[3].imshow(np.abs(out_s), aspect="auto", extent=[0, len(first_frame), f0, f1])
-# ax[3].plot(out_s, label="Максимумы")
-# ax[3].plot(phase, label="Фаза")
-plt.imshow(phase, extent=[0, len(first_frame), f0, f1],
-           aspect='auto', cmap='jet')
+# phase = np.angle(out)
+# ax[3].imshow(phase, extent=[0, len(first_frame), f0, f1],
+#            aspect='auto', cmap='jet')
+# ax[3].set_title("Фаза вейвлет-преобразования")
+
+t = np.linspace(0, pulse_widths[0], len(first_frame))
+
+instantaneous_frequency = sh.cwt_instantaneous_frequency(out, freqs)
+popt_linear, _ = curve_fit(sh.linear_model, t, instantaneous_frequency)
+# popt_poly, _ = curve_fit(sh.polynomial_model, t, instantaneous_frequency)
+# popt_poly4, _ = curve_fit(sh.polynomial_model4, t, instantaneous_frequency)
+# popt_poly6, _ = curve_fit(sh.polynomial_model6, t, instantaneous_frequency)
+
+degree = 32
+poly_fit = Polynomial.fit(t, instantaneous_frequency, degree)
+
+ax[3].plot(t, instantaneous_frequency, label="Мгновенная частота", color="blue")
+ax[3].plot(
+    t,
+    sh.linear_model(t, *popt_linear),
+    label="Линейная модель",
+    linestyle="--",
+    color="red",
+)
+ax[3].plot(
+    t,
+    # sh.polynomial_model6(t, *popt_poly6),
+    poly_fit(t),
+    label="Полиномиальная модель",
+    linestyle="--",
+    color="green",
+)
+
+ax[3].set_title("Закон изменения частоты в чирп-сигнале (CWT-анализ)")
+ax[3].set_xlabel("Время (с)")
+ax[3].set_ylabel("Частота (Гц)")
+ax[3].legend()
+ax[3].grid(True)
+
+# print(
+#     "Линейная модель: f(t) = {:.2f} + {:.2f} * t".format(popt_linear[0], popt_linear[1])
+# )
+# print(
+#     "Полиномиальная модель: f(t) = {:.2f} + {:.2f} * t + {:.2f} * t^2".format(
+#         popt_poly[0], popt_poly[1], popt_poly[2]
+#     )
+# )
+
+# print(
+#     "Полиномиальная модель 4: f(t) = {:.2f} + {:.2f} * t + {:.2f} * t^2 + {:.2f} * t^3 + {:.2f} * t^4".format(
+#         popt_poly4[0], popt_poly4[1], popt_poly4[2], popt_poly4[3], popt_poly4[4]
+#     )
+# )
+# print(
+#     "Полиномиальная модель 6: f(t) = {:.2f} + {:.2f} * t + {:.2f} * t^2 + {:.2f} * t^3 + {:.2f} * t^4 + {:.2f} * t^5 + {:.2f} * t^6".format(
+#         popt_poly6[0],
+#         popt_poly6[1],
+#         popt_poly6[2],
+#         popt_poly6[3],
+#         popt_poly6[4],
+#         popt_poly6[5],
+#         popt_poly6[6],
+#     )
+# )
+
+# print("Коэффициенты полинома:", poly_fit.convert().coef)
+
+T = pulse_widths[0]  # Длительность сигнала, секунды
+t = np.linspace(0, T, int(T * sample_rate))  # Временная шкала
+# popt_poly = [15121.45, -385326.34, 402286.82]
+# freq_t = sh.polynomial_model(t, *popt_poly)
+# freq_t = sh.polynomial_model4(t, *popt_poly4)
+# freq_t = sh.polynomial_model6(t, *popt_poly6)
+freq_t = poly_fit(t)
+
+# Ограничим частоту диапазоном от 7 до 17 кГц
+# freq_t = np.clip(freq_t, 7e3, 17e3)
+
+# Задать начальную фазу
+initial_phase = sh.convert_phase_to_radians(180)  # Например, 0 радиан
+
+# Вычисляем фазу сигнала как интеграл от частоты с учетом начальной фазы
+phase_t = 2 * np.pi * np.cumsum(freq_t) / sample_rate + initial_phase
+
+# Генерация чирп-сигнала с использованием фазы
+synthesized_chirp = np.sin(phase_t)
+
+ax[4].plot(t, synthesized_chirp)
+
+print(f"Длина сигнала: {len(synthesized_chirp)}")
+print(f"Длина первого пакета: {len(first_frame)}")
+
+# Проверка длины массивов
+len_first_frame = len(first_frame)
+len_synthesized_chirp = len(synthesized_chirp)
+
+# Обрезка массивов до одинаковой длины
+min_length = min(len_first_frame, len_synthesized_chirp)
+first_frame = first_frame[:min_length]
+synthesized_chirp = synthesized_chirp[:min_length]
+
+# Корреляция между оригинальным и синтезированным сигналами
+correlation = correlate(first_frame, synthesized_chirp[: len(first_frame)], mode="full")
+lag = np.arange(-len(first_frame) + 1, len(first_frame))
+
+# Нормализуем корреляцию
+# correlation = correlation / np.max(np.abs(correlation))
+
+# CWT анализ синтезированного чирпа
+freqs, cwt_out = fcwt.cwt(synthesized_chirp, int(sample_rate), f0, f1, fn)
+cwt_magnitude = np.abs(cwt_out)
+
+fig1, axx = plt.subplots(3, 1, figsize=(12, 10))
+
+# 1. Корреляция
+axx[0].plot(lag, correlation, label="Корреляция", color="purple")
+axx[0].set_title("Корреляция между оригинальным и синтезированным сигналами")
+axx[0].set_xlabel("Задержка (samples)")
+axx[0].set_ylabel("Нормализованная корреляция")
+axx[0].grid(True)
+
+# 2. CWT анализ оригинального сигнала
+axx[1].imshow(cwt_magnitude, aspect="auto", extent=[0, T, f0, f1])  # , cmap="jet")
+axx[1].set_title("CWT анализ синтезированного чирп-сигнала")
+axx[1].set_xlabel("Время (samples)")
+axx[1].set_ylabel("Частота (Hz)")
+axx[1].invert_yaxis()
+
+# 3. Сравнение сигналов
+time = np.arange(len(first_frame)) / sample_rate
+axx[2].plot(first_frame, label="Оригинальный сигнал")
+axx[2].plot(
+    synthesized_chirp[: len(first_frame)],
+    label="Синтезированный сигнал",
+    linestyle="--",
+    color="orange",
+)
+axx[2].set_title("Сравнение оригинального и синтезированного сигналов")
+axx[2].set_xlabel("Время (с)")
+axx[2].set_ylabel("Амплитуда")
+axx[2].legend()
+axx[2].grid(True)
+
+# Вывод максимальной корреляции
+max_corr = np.max(correlation)
+print(f"Максимальная нормализованная корреляция: {max_corr:.4f}")
+
 
 plt.tight_layout()
 plt.show()

@@ -1,6 +1,62 @@
 # Helper functions
 import numpy as np
 import fcwt
+from scipy.signal import chirp, hilbert
+
+from scipy.optimize import curve_fit
+
+
+def convert_phase_to_radians(initial_phase_degrees):
+    # Преобразование фазы из градусов в радианы
+    initial_phase_radians = np.radians(initial_phase_degrees)
+    return initial_phase_radians
+
+
+def convert_phase_to_degrees(initial_phase):
+    # Преобразование фазы из радиан в градусы
+    initial_phase_degrees = np.degrees(initial_phase)
+    return initial_phase_degrees
+
+
+def hilbert_instantaneous_frequency(signal, t):
+    # Вычисление мгновенной частоты через преобразование Гильберта
+    analytic_signal = hilbert(signal)
+    instantaneous_phase = np.unwrap(np.angle(analytic_signal))
+    instantaneous_frequency = np.diff(instantaneous_phase) / (2.0 * np.pi * np.diff(t))
+    return instantaneous_frequency
+
+
+def cwt_instantaneous_frequency(coef, freqs):
+    # Найти частоты с максимальной мощностью на каждом временном шаге
+    power = np.abs(coef) ** 2
+    max_power_indices = np.argmax(power, axis=0)
+    instantaneous_frequency = freqs[max_power_indices]
+    return instantaneous_frequency
+
+
+# Подгонка линейной и полиномиальной модели к мгновенной частоте
+def linear_model(t, f0, k):
+    return f0 + k * t
+
+
+def polynomial_model(t, a0, a1, a2):
+    return a0 + a1 * t + a2 * t**2
+
+
+def polynomial_model4(t, a0, a1, a2, a3, a4):
+    """
+    Полиномиальная модель 4-й степени для аппроксимации мгновенной частоты.
+
+    """
+    return a0 + a1 * t + a2 * t**2 + a3 * t**3 + a4 * t**4
+
+
+def polynomial_model6(t, a0, a1, a2, a3, a4, a5, a6):
+    """
+    Полиномиальная модель 6-й степени для аппроксимации мгновенной частоты.
+    """
+    return a0 + a1 * t + a2 * t**2 + a3 * t**3 + a4 * t**4 + a5 * t**5 + a6 * t**6
+
 
 def threshold_2Darray_Level(in_array, threshold):
     in_array[in_array < threshold] = 0
@@ -27,12 +83,14 @@ def detect_chirp_in_window(
 
     return chirp_detected, indices, avg_magnitude
 
+
 def calculate_cwt_envelope(signal, fs, f0, f1, fn):
     # Вычислить CWT с помощью fcwt
     freqs, cwt_matrix = fcwt.cwt(signal, int(fs), f0, f1, fn)
     # Рассчитать огибающую как максимумы амплитуд по частотам
     cwt_envelope = np.max(np.abs(cwt_matrix), axis=0)
     return cwt_envelope
+
 
 def find_pulse_widths(envelope, fs, threshold):
     # Преобразовать огибающую в бинарный вид по порогу
@@ -50,6 +108,7 @@ def find_pulse_widths(envelope, fs, threshold):
     pulse_widths = (pulse_ends - pulse_starts) / fs
     intervals = list(zip(pulse_starts / fs, pulse_ends / fs))
     return intervals, pulse_widths
+
 
 def find_pauses(cwt_envelope, fs, threshold):
     """
@@ -89,6 +148,7 @@ def find_pauses(cwt_envelope, fs, threshold):
 
     return pauses
 
+
 def find_chirp_intervals(
     signal,
     fs,
@@ -120,6 +180,7 @@ def find_chirp_intervals(
     if in_chirp:
         intervals.append((chirp_start, chirp_end))
     return intervals
+
 
 def fill_max2one(in_array):
     out_s = np.zeros_like(in_array)

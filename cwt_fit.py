@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import fcwt
 from scipy.optimize import curve_fit
 from scipy.signal import chirp, hilbert
+import signal_helper as sh
 
 # Генерация линейного чирп-сигнала
 fs = 96000 # частота дискретизации
@@ -13,35 +14,20 @@ fn = 200  # количество частот
 k = 200  # скорость изменения частоты (Hz/s)
 
 signal = chirp(t, f0=f0, f1=f1, t1=t[-1], method='quadratic')
-# signal = np.cos(2 * np.pi * (f0 * t + 0.5 * k * t**2))
-
-# Применение CWT с использованием Морле-вейвлета
-# scales = np.arange(1, 256)
-# coef, freqs = pywt.cwt(signal, scales, 'cmor', sampling_period=1/fs)
 freqs, coef = fcwt.cwt(signal, int(fs), f0, f1, fn)
 
-# Найти частоты с максимальной мощностью на каждом временном шаге
-power = np.abs(coef) ** 2
-max_power_indices = np.argmax(power, axis=0)
-instantaneous_frequency = freqs[max_power_indices]
-
-# Подгонка линейной и полиномиальной модели к мгновенной частоте
-def linear_model(t, f0, k):
-    return f0 + k * t
-
-def polynomial_model(t, a0, a1, a2):
-    return a0 + a1 * t + a2 * t**2
+instantaneous_frequency = sh.cwt_instantaneous_frequency(coef, freqs)
 
 # Применение модели
-popt_linear, _ = curve_fit(linear_model, t, instantaneous_frequency)
-popt_poly, _ = curve_fit(polynomial_model, t, instantaneous_frequency)
+popt_linear, _ = curve_fit(sh.linear_model, t, instantaneous_frequency)
+popt_poly, _ = curve_fit(sh.polynomial_model, t, instantaneous_frequency)
 
 # Визуализация
 plt.figure(figsize=(12, 6))
 
 plt.plot(t, instantaneous_frequency, label="Мгновенная частота", color="blue")
-plt.plot(t, linear_model(t, *popt_linear), label="Линейная модель", linestyle="--", color="red")
-plt.plot(t, polynomial_model(t, *popt_poly), label="Полиномиальная модель", linestyle="--", color="green")
+plt.plot(t, sh.linear_model(t, *popt_linear), label="Линейная модель", linestyle="--", color="red")
+plt.plot(t, sh.polynomial_model(t, *popt_poly), label="Полиномиальная модель", linestyle="--", color="green")
 
 plt.title("Закон изменения частоты в чирп-сигнале (CWT-анализ)")
 plt.xlabel("Время (с)")
