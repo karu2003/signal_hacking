@@ -12,7 +12,7 @@ from scipy.interpolate import interp1d
 # Пример использования
 script_path = os.path.dirname(os.path.realpath(__file__))
 # filename = "1834cs1.barb"
-filename = "1707cs1.barb"
+filename = "barb/1707cs1.barb"
 
 f0 = 7000  # Начальная частота
 f1 = 17000  # Конечная частота
@@ -121,24 +121,34 @@ ax[2].set_title("Вейвлет-преобразование")
 # ax[3].set_title("Фаза вейвлет-преобразования")
 
 t = np.linspace(0, pulse_widths[0], len(first_frame))
+initial_guess = [1, 1, 0, 1, 2, 0, 0]
 
 instantaneous_frequency = sh.cwt_instantaneous_frequency(out, freqs)
 popt_linear, _ = curve_fit(sh.linear_model, t, instantaneous_frequency)
 # popt_poly, _ = curve_fit(sh.polynomial_model, t, instantaneous_frequency)
 # popt_poly4, _ = curve_fit(sh.polynomial_model4, t, instantaneous_frequency)
 # popt_poly6, _ = curve_fit(sh.polynomial_model6, t, instantaneous_frequency)
+# params, popt_sin = curve_fit(
+#     sh.sinusoidal_model_2nd_order,
+#     t,
+#     instantaneous_frequency,
+#     p0=initial_guess,
+# )
 
 degree = 32
 poly_fit = Polynomial.fit(t, instantaneous_frequency, degree)
+poly_coefficients = poly_fit.convert().coef
+np.savetxt("poly_coefficients.txt", poly_coefficients)
+
 
 ax[3].plot(t, instantaneous_frequency, label="Мгновенная частота", color="blue")
-ax[3].plot(
-    t,
-    sh.linear_model(t, *popt_linear),
-    label="Линейная модель",
-    linestyle="--",
-    color="red",
-)
+# ax[3].plot(
+#     t,
+#     sh.sinusoidal_model_2nd_order(t, *popt_sin),
+#     label="Sinus модель",
+#     linestyle="--",
+#     color="red",
+# )
 ax[3].plot(
     t,
     # sh.polynomial_model6(t, *popt_poly6),

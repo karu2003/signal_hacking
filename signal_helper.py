@@ -1,8 +1,7 @@
 # Helper functions
 import numpy as np
 import fcwt
-from scipy.signal import chirp, hilbert
-
+from scipy.signal import chirp, hilbert, sweep_poly, correlate
 from scipy.optimize import curve_fit
 
 
@@ -34,7 +33,6 @@ def cwt_instantaneous_frequency(coef, freqs):
     return instantaneous_frequency
 
 
-# Подгонка линейной и полиномиальной модели к мгновенной частоте
 def linear_model(t, f0, k):
     return f0 + k * t
 
@@ -44,18 +42,18 @@ def polynomial_model(t, a0, a1, a2):
 
 
 def polynomial_model4(t, a0, a1, a2, a3, a4):
-    """
-    Полиномиальная модель 4-й степени для аппроксимации мгновенной частоты.
-
-    """
     return a0 + a1 * t + a2 * t**2 + a3 * t**3 + a4 * t**4
 
 
 def polynomial_model6(t, a0, a1, a2, a3, a4, a5, a6):
-    """
-    Полиномиальная модель 6-й степени для аппроксимации мгновенной частоты.
-    """
     return a0 + a1 * t + a2 * t**2 + a3 * t**3 + a4 * t**4 + a5 * t**5 + a6 * t**6
+
+
+def sinusoidal_model(x, A, B, C, D):
+    return A * np.sin(B * x + C) + D
+
+def sinusoidal_model_2nd_order(x, A1, B1, C1, A2, B2, C2, D):
+    return A1 * np.sin(B1 * x + C1) + A2 * np.sin(B2 * x + C2) + D
 
 
 def threshold_2Darray_Level(in_array, threshold):
@@ -195,3 +193,80 @@ def fill_max2one(in_array):
         out_s[count][m] = 1.0
 
     return max_indexs, out_s
+
+
+# Chirp generation
+def generate_chirp(f0, f1, t, fs):
+    t = np.linspace(0, t, int(fs * t))
+    return chirp(t, f0=f0, f1=f1, t1=t[-1], method="linear")
+
+
+def generate_sin_chirp(
+    f_start, f_end, T, fs, num_sine_periods, amp_reduction_factor=0.1
+):  # , fn=128):
+    """
+    Генерирует чирп-сигнал с синусоидальным изменением частоты.
+
+    Parameters:
+    - f_start: начальная частота (Гц)
+    - f_end: конечная частота (Гц)
+    - T: длительность сигнала (с)
+    - fs: частота дискретизации (Гц)
+    - num_sine_periods: количество периодов синусоидального изменения частоты
+    - amp_reduction_factor: коэффициент уменьшения амплитуды синусоидальной модуляции
+    - fn: количество частотных бинов для вейвлет-преобразования
+
+    Returns:
+    - chirp_signal: сгенерированный чирп-сигнал
+    - t: временной вектор
+    - cwt_matrix: матрица вейвлет-преобразования
+    - freqs: частоты для вейвлет-преобразования
+    """
+    # Создание временного вектора
+    t = np.linspace(0, T, int(T * fs), endpoint=False)
+
+    # Определение частоты синусоиды, чтобы получить указанное количество периодов
+    sine_freq = num_sine_periods / T
+
+    # Линейное изменение частоты от начальной до конечной частоты
+    freq_linear = np.linspace(f_start, f_end, len(t))
+
+    # Синусоидальное изменение частоты с уменьшенной амплитудой
+    amp = (f_start - f_end) / 2 * amp_reduction_factor
+    freq_sine = (f_start + f_end) / 2
+    freq_sine_modulated = freq_sine + amp * np.cos(2 * np.pi * sine_freq * t)
+
+    # Изменение частоты: линейное изменение с синусоидальным модулем
+    freq_t = freq_linear + freq_sine_modulated - freq_sine
+
+    # Комбинированное изменение частоты с ограничением в диапазоне [f_start, f_end]
+    # freq_t = np.clip(freq_linear + freq_sine_modulated - freq_sine, f_start, f_end)
+
+    initial_phase = convert_phase_to_radians(180)
+
+    # Интегрируем частоту для получения фазы
+    phase = 2 * np.pi * np.cumsum(freq_t) / fs + initial_phase
+
+    # Генерация чирп-сигнала
+    chirp_signal = np.sin(phase)
+
+    # Применение вейвлет-преобразования
+    # freqs, cwt_matrix = fcwt.cwt(chirp_signal, fs, f_start, f_end, fn)
+
+    return chirp_signal
+    # return chirp_signal, t, freqs, cwt_matrix
+
+
+def compute_correlation(signal_data, synthesized_chirp):
+    len_first_frame = len(signal_data)
+    len_synthesized_chirp = len(synthesized_chirp)
+
+    # Обрезаем до минимальной длины
+    min_length = min(len_first_frame, len_synthesized_chirp)
+    signal_data = signal_data[:min_length]
+    synthesized_chirp = synthesized_chirp[:min_length]
+
+    # Вычисляем корреляцию
+    correlation = correlate(signal_data, synthesized_chirp, mode="full")
+    max_corr = np.max(correlation)
+    return max_corr, correlation, len(signal_data)

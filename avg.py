@@ -13,84 +13,32 @@ t2 = 0.002  # Chirp duration 2 ms
 pause = 0.008  # Pause 8 ms
 f0 = 17000  # Start frequency 18 kHz
 f1 = 7000  # End frequency 34 kHz
-num_sine_periods = 8
-amp_reduction_factor = (0.25)
-
-
-# Chirp generation
-def generate_chirp(f0, f1, t, fs):
-    t = np.linspace(0, t, int(fs * t))
-    return chirp(t, f0=f0, f1=f1, t1=t[-1], method="linear")
-
-
-def generate_sin_chirp(
-    f_start, f_end, T, fs, num_sine_periods, amp_reduction_factor=0.1, fn=128
-):
-    """
-    Генерирует чирп-сигнал с синусоидальным изменением частоты.
-
-    Parameters:
-    - f_start: начальная частота (Гц)
-    - f_end: конечная частота (Гц)
-    - T: длительность сигнала (с)
-    - fs: частота дискретизации (Гц)
-    - num_sine_periods: количество периодов синусоидального изменения частоты
-    - amp_reduction_factor: коэффициент уменьшения амплитуды синусоидальной модуляции
-    - fn: количество частотных бинов для вейвлет-преобразования
-
-    Returns:
-    - chirp_signal: сгенерированный чирп-сигнал
-    - t: временной вектор
-    - cwt_matrix: матрица вейвлет-преобразования
-    - freqs: частоты для вейвлет-преобразования
-    """
-    # Создание временного вектора
-    t = np.linspace(0, T, int(T * fs), endpoint=False)
-
-    # Определение частоты синусоиды, чтобы получить указанное количество периодов
-    sine_freq = num_sine_periods / T
-
-    # Линейное изменение частоты от начальной до конечной частоты
-    freq_linear = np.linspace(f_start, f_end, len(t))
-
-    # Синусоидальное изменение частоты с уменьшенной амплитудой
-    amp = (f_start - f_end) / 2 * amp_reduction_factor
-    freq_sine = (f_start + f_end) / 2
-    freq_sine_modulated = freq_sine + amp * np.sin(2 * np.pi * sine_freq * t)
-
-    # Изменение частоты: линейное изменение с синусоидальным модулем
-    freq_t = freq_linear + freq_sine_modulated - freq_sine
-
-    # Интегрируем частоту для получения фазы
-    phase = 2 * np.pi * np.cumsum(freq_t) / fs
-
-    # Генерация чирп-сигнала
-    chirp_signal = np.cos(phase)
-
-    # Применение вейвлет-преобразования
-    # freqs, cwt_matrix = fcwt.cwt(chirp_signal, fs, f_start, f_end, fn)
-
-    return chirp_signal
-    # return chirp_signal, t, freqs, cwt_matrix
+num_sine_periods = 7.19
+amp_reduction_factor = 0.33
+import signal_helper as sh
 
 
 # Function to generate the signal
-def generate_signal(fs, f0, f1, t1, t2, pause, num_sine_periods=8, amp_reduction_factor=0.2):
+def generate_signal(
+    fs, f0, f1, t1, t2, pause, num_sine_periods=8, amp_reduction_factor=0.2
+):
     signal = []
 
     # First chirp 18-34 kHz, 4 ms, pause 8 ms
     # signal.extend(generate_chirp(f0, f1, t1, fs))
-    signal.extend(generate_sin_chirp(f1, f0, t1, fs, num_sine_periods, amp_reduction_factor, 128))
+    signal.extend(
+        sh.generate_sin_chirp(f1, f0, t1, fs, num_sine_periods, amp_reduction_factor, 128)
+    )
     signal.extend(np.zeros(int(fs * pause)))
 
     # Second and third chirps 34-18 kHz, 4 ms, pause 8 ms
     for _ in range(2):
-        signal.extend(generate_chirp(f1, f0, t1, fs))
+        signal.extend(sh.generate_chirp(f1, f0, t1, fs))
         signal.extend(np.zeros(int(fs * pause)))
 
     # Remaining chirps 34-18 kHz, 2 ms, no pause
     for _ in range(129):
-        signal.extend(generate_chirp(f1, f0, t2, fs))
+        signal.extend(sh.generate_chirp(f1, f0, t2, fs))
 
     return np.array(signal)
 
@@ -128,7 +76,9 @@ num_sine_periods = 8
 # time_array = np.linspace(0, 1, samples)
 # signal = amplitude * np.sin(2 * np.pi * frequency * time_array) + offset
 
-signal = generate_signal(fs, f0, f1, t1, t2, pause, num_sine_periods, amp_reduction_factor)
+signal = generate_signal(
+    fs, f0, f1, t1, t2, pause, num_sine_periods, amp_reduction_factor
+)
 
 # Normalize the signal to the range [-1, 1]
 buffer2 = signal / np.max(np.abs(signal))
@@ -161,9 +111,9 @@ time_array = np.linspace(0, 1, samples)
 
 # buffer = [buffer1, buffer2]
 
-chirp1 = generate_chirp(f0, f1, t1, fs)
-chirp2 = generate_chirp(f1, f0, t1, fs)
-chirp3 = generate_chirp(f1, f0, t2, fs)
+chirp1 = sh.generate_chirp(f0, f1, t1, fs)
+chirp2 = sh.generate_chirp(f1, f0, t1, fs)
+chirp3 = sh.generate_chirp(f1, f0, t2, fs)
 
 rms_value = np.sqrt(np.mean(buffer2**2))
 target_rms = 0.1  # 100 мВ
@@ -188,21 +138,4 @@ ax[1].set_title("Амплитуда вейвлет-преобразования"
 ax[1].set_xlabel("Время (с)")
 ax[1].set_ylabel("Частота (Гц)")
 plt.show()
-# while(1):
-#     aout.push(0, chirp1)
-#     time.sleep(pause)
-#     aout.push(0, chirp2)
-#     time.sleep(pause)
-#     aout.push(0, chirp2)
-#     time.sleep(pause)
-#     aout.push(0, chirp3)
-#     time.sleep(t2*129)
-
-# for i in range(10): # gets 10 triggered samples then quits
-#     data = ain.getSamples(1000)
-#     plt.plot(data[0])
-#     plt.plot(data[1])
-#     plt.show()
-#     time.sleep(0.1)
-
 # libm2k.contextClose(ctx)
