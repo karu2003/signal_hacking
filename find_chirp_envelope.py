@@ -161,6 +161,13 @@ t = np.linspace(0, pulse_widths[0], len(first_frame))
 initial_guess = [1, 1, 0, 1, 2, 0, 0]
 
 instantaneous_frequency = sh.cwt_instantaneous_frequency(out, freqs)
+
+# Имя файла для сохранения данных
+filename = "instantaneous_frequency.csv"
+# Сохранение данных в файл
+np.savetxt(filename, instantaneous_frequency, delimiter=',')
+print(f"Мгновенная частота сохранена в файл: {filename}")
+
 popt_linear, _ = curve_fit(sh.linear_model, t, instantaneous_frequency)
 # popt_poly, _ = curve_fit(sh.polynomial_model, t, instantaneous_frequency)
 # popt_poly4, _ = curve_fit(sh.polynomial_model4, t, instantaneous_frequency)
