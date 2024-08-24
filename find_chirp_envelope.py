@@ -2,6 +2,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import hilbert, sweep_poly, correlate
+from scipy.io import wavfile
 from barbutils import load_barb
 import fcwt
 import signal_helper as sh
@@ -12,7 +13,8 @@ from scipy.interpolate import interp1d
 # Пример использования
 script_path = os.path.dirname(os.path.realpath(__file__))
 # filename = "1834cs1.barb"
-filename = "barb/1707cs1.barb"
+# filename = "barb/1707cs1.barb"
+filename = "resampled_signal.wav"
 
 f0 = 7000  # Начальная частота
 f1 = 17000  # Конечная частота
@@ -20,15 +22,33 @@ fn = 200  # Количество коэффициентов
 threshold = 0.6  # Пороговое значение для огибающей CWT
 threshold_p = 0.2
 
-try:
-    with open(os.path.join(script_path, filename), "rb") as f:
-        barb = f.read()
-except FileNotFoundError:
-    print(f"Файл {filename} не найден.")
+type_f = None
+
+file_path = os.path.join(script_path, filename)
+
+# Проверка расширения файла и загрузка данных
+if filename.endswith(".barb"):
+    try:
+        with open(file_path, "rb") as f:
+            barb = f.read()
+        sample_rate, signal_data = load_barb(barb)
+        sample_rate = 1e6  # Частота дискретизации
+        type_f = "barb"
+    except FileNotFoundError:
+        print(f"Файл {filename} не найден.")
+        exit()
+elif filename.endswith(".wav"):
+    try:
+        sample_rate, signal_data = wavfile.read(file_path)
+        signal_data = sh.normalize(signal_data)
+        type_f = "wav"
+    except FileNotFoundError:
+        print(f"Файл {filename} не найден.")
+        exit()
+else:
+    print(f"Неподдерживаемый формат файла: {filename}")
     exit()
 
-sample_rate, signal_data = load_barb(barb)
-sample_rate = 1e6  # Sampling frequency
 print(f"Частота дискретизации: {sample_rate}")
 print(f"Длина сигнала: {len(signal_data)}")
 
@@ -38,13 +58,30 @@ zero_crossings = np.where(np.diff(np.signbit(signal_data)))[0]
 print(f"Количество переходов через ноль: {len(zero_crossings)}")
 
 # Определить начало первого пакета (первый переход через ноль)
-start_index = zero_crossings[0]
+# if type_f == "wav":
+threshold_amplitude = 0.01  # Пороговое значение амплитуды для определения паузы
+#     start_index = 0
+
+for i in range(len(signal_data)):
+    if np.abs(signal_data[[i]]) > threshold_amplitude:
+        start_index = i
+        break
+
+# else:
+#     start_index = zero_crossings[0]
+
+print(f"Начальный индекс сигнала после исключения паузы: {start_index}")
 
 # Определить конец первого пакета (последний переход через ноль перед паузой)
 # Предполагаем, что пауза определяется отсутствием переходов через ноль в течение определенного времени
+if type_f == "barb":
+    cross_zero = 90
+else:
+    cross_zero = 60
+
 for i in range(1, len(zero_crossings)):
     if (
-        zero_crossings[i] - zero_crossings[i - 1] > 90
+        zero_crossings[i] - zero_crossings[i - 1] > cross_zero
     ):  # 10 - это пример порога, определяющего паузу
         end_index = zero_crossings[i - 1]
         break
@@ -138,13 +175,15 @@ popt_linear, _ = curve_fit(sh.linear_model, t, instantaneous_frequency)
 degree = 32
 poly_fit = Polynomial.fit(t, instantaneous_frequency, degree)
 poly_coefficients = poly_fit.convert().coef
-np.savetxt("poly_coefficients.txt", poly_coefficients)
+
+poly_file = f"{int(sample_rate)}_poly_coefficients.txt"
+np.savetxt(poly_file, poly_coefficients)
 
 
 ax[3].plot(t, instantaneous_frequency, label="Мгновенная частота", color="blue")
 # ax[3].plot(
 #     t,
-#     sh.sinusoidal_model_2nd_order(t, *popt_sin),
+#     sh.sinusoidal_model_2nd_order(t, *popt_sin),ispol
 #     label="Sinus модель",
 #     linestyle="--",
 #     color="red",

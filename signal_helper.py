@@ -270,3 +270,10 @@ def compute_correlation(signal_data, synthesized_chirp):
     correlation = correlate(signal_data, synthesized_chirp, mode="full")
     max_corr = np.max(correlation)
     return max_corr, correlation, len(signal_data)
+
+def normalize(signal):
+    max_val = np.max(np.abs(signal))
+    if max_val > 0:
+        return signal / max_val
+    else:
+        return signal
