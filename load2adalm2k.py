@@ -3,12 +3,13 @@ import matplotlib.pyplot as plt
 from scipy.signal import resample
 import os
 from barbutils import load_barb
+from scipy.io.wavfile import write
 
 # Пример использования
 script_path = os.path.dirname(os.path.realpath(__file__))
 filename = "barb/1707cs1.barb"
 
-# Исходные параметры
+# Исходные параметрыs
 original_fs = 1e6  # 1 МГц
 target_fs = 750e3  # 750 кГц
 
@@ -42,6 +43,29 @@ try:
 except Exception as e:
     print(f"Ошибка при ресамплинге: {e}")
     exit()
+    
+def normalize(signal):
+    max_val = np.max(np.abs(signal))
+    if max_val > 0:
+        return signal / max_val
+    else:
+        return signal
+
+# Нормализация сигналов
+normalized_signal = normalize(signal)
+normalized_resampled_signal = normalize(resampled_signal)
+
+# Сохранение в WAV файлы
+original_wav_file = os.path.join(script_path, "original_signal.wav")
+resampled_wav_file = os.path.join(script_path, "resampled_signal.wav")
+
+# Запись оригинального сигнала в WAV файл
+write(original_wav_file, int(original_fs), (normalized_signal * 32767).astype(np.int16))
+print(f"Оригинальный сигнал сохранен в {original_wav_file}")
+
+# Запись ресамплированного сигнала в WAV файл
+write(resampled_wav_file, int(target_fs), (normalized_resampled_signal * 32767).astype(np.int16))
+print(f"Ресамплированный сигнал сохранен в {resampled_wav_file}")
 
 # Временные оси для графиков
 original_time = np.arange(len(signal)) / original_fs
