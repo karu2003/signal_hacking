@@ -13,8 +13,8 @@ from scipy.interpolate import interp1d
 # Пример использования
 script_path = os.path.dirname(os.path.realpath(__file__))
 # filename = "1834cs1.barb"
-# filename = "barb/1707cs1.barb"
-filename = "resampled_signal.wav"
+filename = "barb/1707cs1.barb"
+# filename = "resampled_signal.wav"
 
 f0 = 7000  # Начальная частота
 f1 = 17000  # Конечная частота
@@ -58,19 +58,16 @@ zero_crossings = np.where(np.diff(np.signbit(signal_data)))[0]
 print(f"Количество переходов через ноль: {len(zero_crossings)}")
 
 # Определить начало первого пакета (первый переход через ноль)
-# if type_f == "wav":
+
 threshold_amplitude = 0.01  # Пороговое значение амплитуды для определения паузы
-#     start_index = 0
 
 for i in range(len(signal_data)):
     if np.abs(signal_data[[i]]) > threshold_amplitude:
         start_index = i
         break
 
-# else:
-#     start_index = zero_crossings[0]
-
-print(f"Начальный индекс сигнала после исключения паузы: {start_index}")
+# start_index = zero_crossings[0]
+# print(f"Начальный индекс сигнала после исключения паузы: {start_index}")
 
 # Определить конец первого пакета (последний переход через ноль перед паузой)
 # Предполагаем, что пауза определяется отсутствием переходов через ноль в течение определенного времени
@@ -105,10 +102,8 @@ print(f"Паузы: {pauses}")
 # Найти ширину импульсов огибающей CWT
 intervals, pulse_widths = sh.find_pulse_widths(cwt_envelope, sample_rate, threshold)
 print(f"Количество интервалов: {len(intervals)}")
-print(f"Ширина импульсов: {[f'{width:.4f}' for width in pulse_widths]}")
+# print(f"Ширина импульсов: {[f'{width:.4f}' for width in pulse_widths]}")
 
-
-# fig, ax1 = plt.subplots(figsize=(10, 4))
 fig, ax = plt.subplots(5, 1, figsize=(12, 10))
 
 time = np.arange(len(signal_data)) / sample_rate
@@ -151,7 +146,6 @@ magnitude = np.abs(out)
 ax[2].imshow(magnitude, aspect="auto", extent=[0, len(first_frame), f0, f1])
 ax[2].set_title("Вейвлет-преобразование")
 
-
 # phase = np.angle(out)
 # ax[3].imshow(phase, extent=[0, len(first_frame), f0, f1],
 #            aspect='auto', cmap='jet')
@@ -168,18 +162,7 @@ filename = "instantaneous_frequency.csv"
 np.savetxt(filename, instantaneous_frequency, delimiter=',')
 print(f"Мгновенная частота сохранена в файл: {filename}")
 
-popt_linear, _ = curve_fit(sh.linear_model, t, instantaneous_frequency)
-# popt_poly, _ = curve_fit(sh.polynomial_model, t, instantaneous_frequency)
-# popt_poly4, _ = curve_fit(sh.polynomial_model4, t, instantaneous_frequency)
-# popt_poly6, _ = curve_fit(sh.polynomial_model6, t, instantaneous_frequency)
-# params, popt_sin = curve_fit(
-#     sh.sinusoidal_model_2nd_order,
-#     t,
-#     instantaneous_frequency,
-#     p0=initial_guess,
-# )
-
-degree = 32
+degree = 31
 poly_fit = Polynomial.fit(t, instantaneous_frequency, degree)
 poly_coefficients = poly_fit.convert().coef
 
@@ -188,16 +171,8 @@ np.savetxt(poly_file, poly_coefficients)
 
 
 ax[3].plot(t, instantaneous_frequency, label="Мгновенная частота", color="blue")
-# ax[3].plot(
-#     t,
-#     sh.sinusoidal_model_2nd_order(t, *popt_sin),ispol
-#     label="Sinus модель",
-#     linestyle="--",
-#     color="red",
-# )
 ax[3].plot(
     t,
-    # sh.polynomial_model6(t, *popt_poly6),
     poly_fit(t),
     label="Полиномиальная модель",
     linestyle="--",
@@ -210,40 +185,9 @@ ax[3].set_ylabel("Частота (Гц)")
 ax[3].legend()
 ax[3].grid(True)
 
-# print(
-#     "Линейная модель: f(t) = {:.2f} + {:.2f} * t".format(popt_linear[0], popt_linear[1])
-# )
-# print(
-#     "Полиномиальная модель: f(t) = {:.2f} + {:.2f} * t + {:.2f} * t^2".format(
-#         popt_poly[0], popt_poly[1], popt_poly[2]
-#     )
-# )
-
-# print(
-#     "Полиномиальная модель 4: f(t) = {:.2f} + {:.2f} * t + {:.2f} * t^2 + {:.2f} * t^3 + {:.2f} * t^4".format(
-#         popt_poly4[0], popt_poly4[1], popt_poly4[2], popt_poly4[3], popt_poly4[4]
-#     )
-# )
-# print(
-#     "Полиномиальная модель 6: f(t) = {:.2f} + {:.2f} * t + {:.2f} * t^2 + {:.2f} * t^3 + {:.2f} * t^4 + {:.2f} * t^5 + {:.2f} * t^6".format(
-#         popt_poly6[0],
-#         popt_poly6[1],
-#         popt_poly6[2],
-#         popt_poly6[3],
-#         popt_poly6[4],
-#         popt_poly6[5],
-#         popt_poly6[6],
-#     )
-# )
-
-# print("Коэффициенты полинома:", poly_fit.convert().coef)
-
 T = pulse_widths[0]  # Длительность сигнала, секунды
 t = np.linspace(0, T, int(T * sample_rate))  # Временная шкала
-# popt_poly = [15121.45, -385326.34, 402286.82]
-# freq_t = sh.polynomial_model(t, *popt_poly)
-# freq_t = sh.polynomial_model4(t, *popt_poly4)
-# freq_t = sh.polynomial_model6(t, *popt_poly6)
+
 freq_t = poly_fit(t)
 
 # Ограничим частоту диапазоном от 7 до 17 кГц
@@ -260,8 +204,8 @@ synthesized_chirp = np.sin(phase_t)
 
 ax[4].plot(t, synthesized_chirp)
 
-print(f"Длина сигнала: {len(synthesized_chirp)}")
-print(f"Длина первого пакета: {len(first_frame)}")
+# print(f"Длина сигнала: {len(synthesized_chirp)}")
+# print(f"Длина первого пакета: {len(first_frame)}")
 
 # Проверка длины массивов
 len_first_frame = len(first_frame)
