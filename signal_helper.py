@@ -283,3 +283,15 @@ def normalize01(data):
     min_val = np.min(data)
     max_val = np.max(data)
     return (data - min_val) / (max_val - min_val)
+
+def map_values(data, new_min, new_max):
+    """Мапирует значения массива data в новый диапазон [new_min, new_max]."""
+    old_min = np.min(data)
+    old_max = np.max(data)
+    return new_min + (data - old_min) * (new_max - new_min) / (old_max - old_min)
+
+def map_values_reverse(data, old_min, old_max, new_min, new_max):
+    """Мапирует значения массива data из диапазона [old_min, old_max] в диапазон [new_min, new_max] в обратном порядке."""
+    return new_max - (data - old_min) * (new_max - new_min) / (old_max - old_min)
+
+
