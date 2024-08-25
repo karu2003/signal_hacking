@@ -157,13 +157,10 @@ instantaneous_frequency = sh.cwt_instantaneous_frequency(out, freqs)
 degree = 31
 
 t1 = np.linspace(0, 1, len(first_frame))
-norm_instantaneous_frequency = sh.normalize(instantaneous_frequency)
-max_freq = np.max(instantaneous_frequency)
-min_freq = np.min(instantaneous_frequency)
-# map_instantaneous_frequency = sh.map_values_reverse(instantaneous_frequency, 7000, 17000, 0, 1)
-poly_fit_norm = Polynomial.fit(t1, norm_instantaneous_frequency, degree)
+map_instantaneous_frequency = sh.map_values_reverse(instantaneous_frequency, 7000, 17000, 0, 1)
+poly_fit_norm = Polynomial.fit(t1, map_instantaneous_frequency, degree)
 poly_freq = poly_fit_norm(t1)
-mapped_poly_freq = sh.map_values(poly_freq, min_freq, max_freq)
+mapped_poly_freq = sh.map_values_reverse(poly_freq, 0, 1, 7000, 17000)
 
 
 # Имя файла для сохранения данных
