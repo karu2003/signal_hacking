@@ -277,3 +277,9 @@ def normalize(signal):
         return signal / max_val
     else:
         return signal
+
+def normalize01(data):
+    """Нормализует данные от 0 до 1."""
+    min_val = np.min(data)
+    max_val = np.max(data)
+    return (data - min_val) / (max_val - min_val)

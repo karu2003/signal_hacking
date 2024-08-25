@@ -155,6 +155,7 @@ t = np.linspace(0, pulse_widths[0], len(first_frame))
 initial_guess = [1, 1, 0, 1, 2, 0, 0]
 
 instantaneous_frequency = sh.cwt_instantaneous_frequency(out, freqs)
+norm_instantaneous_frequency = sh.normalize01(instantaneous_frequency)
 
 # Имя файла для сохранения данных
 filename = "instantaneous_frequency.csv"
