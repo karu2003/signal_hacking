@@ -9,6 +9,7 @@ import signal_helper as sh
 from scipy.optimize import curve_fit
 from numpy.polynomial.polynomial import Polynomial
 from scipy.interpolate import interp1d
+from scipy.io import wavfile
 
 # Пример использования
 script_path = os.path.dirname(os.path.realpath(__file__))
@@ -136,6 +137,11 @@ ax[0].legend(loc="upper right")
 
 first_frame = signal_data[start_index:end_index]
 
+# Сохранение первого фрейма в WAV файл
+wav_filename = "first_frame.wav"
+wavfile.write(wav_filename, int(sample_rate), first_frame.astype(np.int16))
+print(f"Первый фрейм сохранен в файл: {wav_filename}")
+
 ax[1].plot(first_frame, label="1 Сигнал")
 ax[1].set_title("Первый пакет")
 ax[1].grid(True)
@@ -166,7 +172,7 @@ mapped_poly_freq = sh.map_values_reverse(poly_freq, 0, 1, 7000, 17000)
 # Имя файла для сохранения данных
 filename = "instantaneous_frequency.csv"
 # Сохранение данных в файл
-np.savetxt(filename, instantaneous_frequency, delimiter=',')
+np.savetxt(filename, map_instantaneous_frequency, delimiter=',')
 print(f"Мгновенная частота сохранена в файл: {filename}")
 
 degree = 31
