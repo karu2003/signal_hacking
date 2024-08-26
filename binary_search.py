@@ -4,10 +4,9 @@ from scipy.signal import correlate
 import json
 from scipy.io import wavfile
 import signal_helper as sh
-import multiprocessing as mp
 import sys
 
-# Функция для вычисления корреляции, используя кусочно-линейную интерполяцию
+# Функция для вычисления корреляции с кусочно-линейной интерполяцией
 def compute_spline_correlation(num_knots, x, y, signal, sample_rate, initial_phase):
     # Выбираем узлы для линейной интерполяции
     knots = np.linspace(x.min(), x.max(), num=num_knots)
@@ -18,7 +17,36 @@ def compute_spline_correlation(num_knots, x, y, signal, sample_rate, initial_pha
     synthesized_chirp = sh.freq_to_chirp(mapped_poly_freq, sample_rate, initial_phase)
     
     max_corr, _, _ = sh.compute_correlation(signal, synthesized_chirp)
-    return max_corr, num_knots, y_spline_pred, synthesized_chirp
+    return max_corr, y_spline_pred, synthesized_chirp
+
+# Функция бинарного поиска для оптимизации корреляции
+def binary_search_optimization(x, y, signal, sample_rate, initial_phase, low, high, tol=1):
+    best_knots = None
+    max_correlation = -np.inf
+    best_approximation = None
+    best_chirp = None
+
+    while low <= high:
+        mid = (low + high) // 2
+        mid_left = mid - 1
+        mid_right = mid + 1
+
+        corr_mid, approx_mid, chirp_mid = compute_spline_correlation(mid, x, y, signal, sample_rate, initial_phase)
+        corr_left, _, _ = compute_spline_correlation(mid_left, x, y, signal, sample_rate, initial_phase)
+        corr_right, _, _ = compute_spline_correlation(mid_right, x, y, signal, sample_rate, initial_phase)
+
+        if corr_mid > max(corr_left, corr_right):
+            best_knots = mid
+            max_correlation = corr_mid
+            best_approximation = approx_mid
+            best_chirp = chirp_mid
+            break
+        elif corr_left > corr_mid:
+            high = mid_left
+        else:
+            low = mid_right
+
+    return best_knots, max_correlation, best_approximation, best_chirp
 
 # Основная функция
 def main():
@@ -41,18 +69,13 @@ def main():
     x = np.linspace(0, 1, len(y))
     initial_phase = 180
 
-    r = range(3, 64)
+    # Оптимизация методом бинарного поиска
+    low, high = 3, 47  # Начальные границы диапазона количества узлов
+    tol = 1  # Допуск для завершения поиска
 
-    # Параллельное вычисление корреляций для разных узлов линейного сплайна
-    with mp.Pool(mp.cpu_count()) as pool:
-        results = pool.starmap(compute_spline_correlation, [(num_knots, x, y, signal, sample_rate, initial_phase) for num_knots in r])
-
-    # Извлекаем результаты и находим наилучшую корреляцию
-    correlations, knots_values, approximations, chirps = zip(*results)
-    max_correlation = max(correlations)
-    best_index = correlations.index(max_correlation)
-    best_knots = knots_values[best_index]
-    best_approximation = approximations[best_index]
+    best_knots, max_correlation, best_approximation, best_chirp = binary_search_optimization(
+        x, y, signal, sample_rate, initial_phase, low, high, tol
+    )
 
     # Сохранение параметров линейного сплайна в файл
     best_knots_positions = np.linspace(x.min(), x.max(), num=best_knots)
@@ -67,7 +90,8 @@ def main():
     fig, axs = plt.subplots(3, 1, figsize=(12, 18))
 
     # Построим график зависимости корреляции от количества узлов сплайна
-    axs[0].plot(r, correlations, marker="o")
+    axs[0].plot(range(low, high + 1), [compute_spline_correlation(i, x, y, signal, sample_rate, initial_phase)[0] for i in range(low, high + 1)], marker="o")
+    axs[0].axvline(best_knots, color='red', linestyle='--')
     axs[0].set_title("Зависимость корреляции от количества узлов линейного сплайна")
     axs[0].set_xlabel("Количество узлов")
     axs[0].set_ylabel("Корреляция")
@@ -84,7 +108,7 @@ def main():
 
     # Построим график оригинального и синтезированного сигналов
     axs[2].plot(signal, label="Оригинальный сигнал", color="black")
-    axs[2].plot(chirps[best_index], label="Синтезированный сигнал", linestyle="--", color="red")
+    axs[2].plot(best_chirp, label="Синтезированный сигнал", linestyle="--", color="red")
     axs[2].set_title("Оригинальный и синтезированный сигналы")
     axs[2].set_xlabel("Время (с)")
     axs[2].set_ylabel("Амплитуда")

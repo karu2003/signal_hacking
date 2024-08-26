@@ -139,7 +139,8 @@ first_frame = signal_data[start_index:end_index]
 
 # Сохранение первого фрейма в WAV файл
 wav_filename = "first_frame.wav"
-wavfile.write(wav_filename, int(sample_rate), first_frame.astype(np.int16))
+# wavfile.write(wav_filename, int(sample_rate), first_frame.astype(np.int16))
+wavfile.write(wav_filename, int(sample_rate), first_frame)
 print(f"Первый фрейм сохранен в файл: {wav_filename}")
 
 ax[1].plot(first_frame, label="1 Сигнал")
@@ -161,21 +162,27 @@ t = np.linspace(0, pulse_widths[0], len(first_frame))
 instantaneous_frequency = sh.cwt_instantaneous_frequency(out, freqs)
 
 degree = 31
+initial_phase = 180
 
 t1 = np.linspace(0, 1, len(first_frame))
-map_instantaneous_frequency = sh.map_values_reverse(instantaneous_frequency, 7000, 17000, 0, 1)
+map_instantaneous_frequency = sh.map_values_reverse(
+    instantaneous_frequency, 7000, 17000, 0, 1
+)
 poly_fit_norm = Polynomial.fit(t1, map_instantaneous_frequency, degree)
 poly_freq = poly_fit_norm(t1)
 mapped_poly_freq = sh.map_values_reverse(poly_freq, 0, 1, 7000, 17000)
+synthesized_chirp = sh.freq_to_chirp(mapped_poly_freq, sample_rate, initial_phase)
+
+# Ограничим частоту диапазоном от 7 до 17 кГц
+# freq_t = np.clip(freq_t, 7e3, 17e3)
 
 
 # Имя файла для сохранения данных
 filename = "instantaneous_frequency.csv"
 # Сохранение данных в файл
-np.savetxt(filename, map_instantaneous_frequency, delimiter=',')
+np.savetxt(filename, map_instantaneous_frequency, delimiter=",")
 print(f"Мгновенная частота сохранена в файл: {filename}")
 
-degree = 31
 poly_fit = Polynomial.fit(t, instantaneous_frequency, degree)
 
 poly_coefficients = poly_fit.convert().coef
@@ -199,24 +206,7 @@ ax[3].set_ylabel("Частота (Гц)")
 ax[3].legend()
 ax[3].grid(True)
 
-T = pulse_widths[0]  # Длительность сигнала, секунды
-t = np.linspace(0, T, int(T * sample_rate))  # Временная шкала
-
-freq_t = poly_fit(t)
-
-# Ограничим частоту диапазоном от 7 до 17 кГц
-# freq_t = np.clip(freq_t, 7e3, 17e3)
-
-# Задать начальную фазу
-initial_phase = sh.convert_phase_to_radians(180)  # Например, 0 радиан
-
-# Вычисляем фазу сигнала как интеграл от частоты с учетом начальной фазы
-phase_t = 2 * np.pi * np.cumsum(freq_t) / sample_rate + initial_phase
-
-# Генерация чирп-сигнала с использованием фазы
-synthesized_chirp = np.sin(phase_t)
-
-ax[4].plot(t, synthesized_chirp)
+ax[4].plot(t1, synthesized_chirp)
 
 # print(f"Длина сигнала: {len(synthesized_chirp)}")
 # print(f"Длина первого пакета: {len(first_frame)}")
@@ -251,7 +241,7 @@ axx[0].set_ylabel("Нормализованная корреляция")
 axx[0].grid(True)
 
 # 2. CWT анализ оригинального сигнала
-axx[1].imshow(cwt_magnitude, aspect="auto", extent=[0, T, f0, f1])  # , cmap="jet")
+axx[1].imshow(cwt_magnitude, aspect="auto", extent=[0, pulse_widths[0], f0, f1])
 axx[1].set_title("CWT анализ синтезированного чирп-сигнала")
 axx[1].set_xlabel("Время (samples)")
 axx[1].set_ylabel("Частота (Hz)")
@@ -275,7 +265,6 @@ axx[2].grid(True)
 # Вывод максимальной корреляции
 max_corr = np.max(correlation)
 print(f"Максимальная нормализованная корреляция: {max_corr:.4f}")
-
 
 plt.tight_layout()
 plt.show()

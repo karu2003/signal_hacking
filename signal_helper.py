@@ -200,6 +200,26 @@ def generate_chirp(f0, f1, t, fs):
     t = np.linspace(0, t, int(fs * t))
     return chirp(t, f0=f0, f1=f1, t1=t[-1], method="linear")
 
+def freq_to_chirp(freq_t, sample_rate, initial_phase_degrees=180):
+    """
+    Генерирует чирп-сигнал на основе временного ряда частот.
+
+    :param freq_t: Временной ряд частот.
+    :param sample_rate: Частота дискретизации.
+    :param initial_phase_degrees: Начальная фаза в градусах (по умолчанию 180).
+    :return: Сгенерированный чирп-сигнал.
+    """
+    # Задать начальную фазу
+    initial_phase = convert_phase_to_radians(initial_phase_degrees)
+
+    # Вычисляем фазу сигнала как интеграл от частоты с учетом начальной фазы
+    phase_t = 2 * np.pi * np.cumsum(freq_t) / sample_rate + initial_phase
+
+    # Генерация чирп-сигнала с использованием фазы
+    synthesized_chirp = np.sin(phase_t)
+
+    return synthesized_chirp
+
 
 def generate_sin_chirp(
     f_start, f_end, T, fs, num_sine_periods, amp_reduction_factor=0.1
