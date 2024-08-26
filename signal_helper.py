@@ -314,4 +314,13 @@ def map_values_reverse(data, old_min, old_max, new_min, new_max):
     """Мапирует значения массива data из диапазона [old_min, old_max] в диапазон [new_min, new_max] в обратном порядке."""
     return new_max - (data - old_min) * (new_max - new_min) / (old_max - old_min)
 
+def map_values_tb(data, range_min, range_max, reverse=False):
+    """Мапирует значения массива data из диапазона [range_min, range_max] в диапазон [0, 1].
+    Если reverse=True, мапирует значения из диапазона [0, 1] в диапазон [range_min, range_max].
+    """
+    if reverse:
+        return range_min + data * (range_max - range_min)
+    else:
+        return (data - range_min) / (range_max - range_min)
+
 

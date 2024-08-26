@@ -165,12 +165,14 @@ degree = 31
 initial_phase = 180
 
 t1 = np.linspace(0, 1, len(first_frame))
-map_instantaneous_frequency = sh.map_values_reverse(
-    instantaneous_frequency, 7000, 17000, 0, 1
-)
+# map_instantaneous_frequency = sh.map_values_reverse(
+#     instantaneous_frequency, 7000, 17000, 0, 1
+# )
+map_instantaneous_frequency = sh.map_values_tb(instantaneous_frequency, 7000, 17000)
 poly_fit_norm = Polynomial.fit(t1, map_instantaneous_frequency, degree)
 poly_freq = poly_fit_norm(t1)
-mapped_poly_freq = sh.map_values_reverse(poly_freq, 0, 1, 7000, 17000)
+# mapped_poly_freq = sh.map_values_reverse(poly_freq, 0, 1, 7000, 17000)
+mapped_poly_freq = sh.map_values_tb(poly_freq, 7000, 17000,reverse=True)
 synthesized_chirp = sh.freq_to_chirp(mapped_poly_freq, sample_rate, initial_phase)
 
 # Ограничим частоту диапазоном от 7 до 17 кГц
