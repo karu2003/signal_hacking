@@ -37,6 +37,7 @@ except (ValueError, TypeError) as e:
     print(f"Ошибка при загрузке данных: {e}")
     exit()
 
+
 # Рассчитываем новое количество точек
 num_samples = int(len(signal) * (target_fs / original_fs))
 
@@ -60,9 +61,17 @@ def normalize(signal):
 normalized_signal = normalize(signal)
 normalized_resampled_signal = normalize(resampled_signal)
 
+# Извлечение частоты из имени файла
+barb_filename = os.path.basename(filename)
+frequency_str = barb_filename.split("cs")[0]
+
+# Создание имени WAV файла с частотой в начале
+original_filename = f"{frequency_str}_original.wav"
+resampled_filename = f"{frequency_str}_resampled.wav"
+
 # Сохранение в WAV файлы
-original_wav_file = os.path.join(script_path, "original_signal.wav")
-resampled_wav_file = os.path.join(script_path, "resampled_signal.wav")
+original_wav_file = os.path.join(script_path, original_filename)
+resampled_wav_file = os.path.join(script_path, resampled_filename)
 
 # Запись оригинального сигнала в WAV файл
 write(original_wav_file, int(original_fs), (normalized_signal * 32767).astype(np.int16))
