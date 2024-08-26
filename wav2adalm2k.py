@@ -41,15 +41,11 @@ aout.setSampleRate(1, fs)
 aout.enableChannel(0, True)
 aout.enableChannel(1, True)
 
-buffer2 = data.tolist()
+buffer = data.tolist()
 
 aout.setCyclic(True)
-aout.push(0, buffer2)
-aout.push(1, buffer2)
-
-# fig, ax = plt.subplots(2, 1, sharex=True, figsize=(12, 8))
-# ax[0].plot(buffer2)
-# plt.show()
+aout.push(0, buffer)
+aout.push(1, buffer)
 
 # # Остановка генерации сигнала
 # aout.stopChannel(0)
