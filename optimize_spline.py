@@ -42,6 +42,7 @@ def main():
     y = data
     x = np.linspace(0, 1, len(y))
     initial_phase = 180
+    polynomial_type = "spline"
 
     r = range(3, 48)
 
@@ -62,11 +63,12 @@ def main():
 
     # Сохранение параметров сплайна в файл
     spline_params = {
+        "type": polynomial_type,
         "knots": best_knots_positions.tolist(),
         "coefficients": best_spline.c.tolist()
     }
 
-    with open("spline_params.json", "w") as f:
+    with open("params.json", "w") as f:
         json.dump(spline_params, f)
 
     # Создаем фигуру и оси для нескольких графиков

@@ -40,6 +40,7 @@ def main():
     y = data
     x = np.linspace(0, 1, len(y))
     initial_phase = 180
+    polynomial_type = "interp"
 
     r = range(3, 64)
 
@@ -57,10 +58,11 @@ def main():
     # Сохранение параметров линейного сплайна в файл
     best_knots_positions = np.linspace(x.min(), x.max(), num=best_knots)
     spline_params = {
-        "knots": best_knots_positions.tolist(),
+        "type": polynomial_type,
+        "coefficients": best_knots_positions.tolist(),
     }
 
-    with open("spline_params.json", "w") as f:
+    with open("params.json", "w") as f:
         json.dump(spline_params, f)
 
     # Создаем фигуру и оси для нескольких графиков
