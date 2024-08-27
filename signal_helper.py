@@ -52,6 +52,7 @@ def polynomial_model6(t, a0, a1, a2, a3, a4, a5, a6):
 def sinusoidal_model(x, A, B, C, D):
     return A * np.sin(B * x + C) + D
 
+
 def sinusoidal_model_2nd_order(x, A1, B1, C1, A2, B2, C2, D):
     return A1 * np.sin(B1 * x + C1) + A2 * np.sin(B2 * x + C2) + D
 
@@ -200,6 +201,7 @@ def generate_chirp(f0, f1, t, fs):
     t = np.linspace(0, t, int(fs * t))
     return chirp(t, f0=f0, f1=f1, t1=t[-1], method="linear")
 
+
 def freq_to_chirp(freq_t, sample_rate, initial_phase_degrees=180):
     """
     Генерирует чирп-сигнал на основе временного ряда частот.
@@ -291,6 +293,7 @@ def compute_correlation(signal_data, synthesized_chirp):
     max_corr = np.max(correlation)
     return max_corr, correlation, len(signal_data)
 
+
 def normalize(signal):
     max_val = np.max(np.abs(signal))
     if max_val > 0:
@@ -298,11 +301,13 @@ def normalize(signal):
     else:
         return signal
 
+
 def normalize01(data):
     """Нормализует данные от 0 до 1."""
     min_val = np.min(data)
     max_val = np.max(data)
     return (data - min_val) / (max_val - min_val)
+
 
 def map_values(data, new_min, new_max):
     """Мапирует значения массива data в новый диапазон [new_min, new_max]."""
@@ -310,9 +315,11 @@ def map_values(data, new_min, new_max):
     old_max = np.max(data)
     return new_min + (data - old_min) * (new_max - new_min) / (old_max - old_min)
 
+
 def map_values_reverse(data, old_min, old_max, new_min, new_max):
     """Мапирует значения массива data из диапазона [old_min, old_max] в диапазон [new_min, new_max] в обратном порядке."""
     return new_max - (data - old_min) * (new_max - new_min) / (old_max - old_min)
+
 
 def map_values_tb(data, range_min, range_max, reverse=False):
     """Мапирует значения массива data из диапазона [range_min, range_max] в диапазон [0, 1].
@@ -324,3 +331,40 @@ def map_values_tb(data, range_min, range_max, reverse=False):
         return (data - range_min) / (range_max - range_min)
 
 
+def determine_chirp_direction(intervals, sample_rate, instantaneous_frequency):
+    """
+    Определяет направление чирпа (восходящий или нисходящий) в каждом интервале.
+
+    Параметры:
+    intervals: список кортежей (в секундах), содержащих начало и конец каждого интервала.
+    sample_rate: частота дискретизации сигнала.
+    instantaneous_frequency: массив мгновенных частот, соответствующий сигналу.
+
+    Возвращает:
+    chirp_directions: список строк, указывающих направление чирпа для каждого интервала.
+    """
+    chirp_directions = []
+
+    for start_sec, end_sec in intervals:
+        # Перевод интервала из секунд в индексы
+        start_idx = int(start_sec * sample_rate)
+        end_idx = int(end_sec * sample_rate)
+
+        # Извлечение мгновенной частоты для интервала
+        freq_interval = instantaneous_frequency[start_idx:end_idx]
+
+        # Вычисление наклона мгновенной частоты
+        if len(freq_interval) > 1:
+            slope = np.polyfit(np.arange(len(freq_interval)), freq_interval, 1)[0]
+            if slope > 0:
+                direction = 1
+            else:
+                direction = -1
+        else:
+            direction = (
+                0  # В случае недостаточного количества точек данных
+            )
+
+        chirp_directions.append(direction)
+
+    return chirp_directions

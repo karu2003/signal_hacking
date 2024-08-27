@@ -8,6 +8,7 @@ from scipy.io.wavfile import write
 # Пример использования
 script_path = os.path.dirname(os.path.realpath(__file__))
 filename = "barb/1707cs1.barb"
+filename = "barb/1834cs1.barb"
 
 # Исходные параметрыs
 original_fs = 1e6  # 1 МГц
@@ -57,17 +58,17 @@ def normalize(signal):
         return signal
 
 
-# Нормализация сигналов
+# Нормализация сигналовs
 normalized_signal = normalize(signal)
 normalized_resampled_signal = normalize(resampled_signal)
 
 # Извлечение частоты из имени файла
 barb_filename = os.path.basename(filename)
-frequency_str = barb_filename.split("cs")[0]
+frequency_str = barb_filename.split(".")[0]
 
 # Создание имени WAV файла с частотой в начале
-original_filename = f"{frequency_str}_original.wav"
-resampled_filename = f"{frequency_str}_resampled.wav"
+original_filename = f"wav/{frequency_str}_original.wav"
+resampled_filename = f"wav/{frequency_str}_resampled.wav"
 
 # Сохранение в WAV файлы
 original_wav_file = os.path.join(script_path, original_filename)
