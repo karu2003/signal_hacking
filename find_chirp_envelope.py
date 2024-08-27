@@ -114,6 +114,7 @@ first_frame = signal_data[start_index:end_index]
 # wavfile.write(wav_filename, int(sample_rate), first_frame.astype(np.int16))
 wavfile.write(wav_filename, int(sample_rate), first_frame)
 print(f"Первый фрейм сохранен в файл: {wav_filename}")
+print(f"Длина первого фрейма: {len(first_frame)}")
 
 freqs, out = fcwt.cwt(first_frame, int(sample_rate), f0, f1, fn)
 magnitude = np.abs(out)
@@ -123,7 +124,7 @@ t = np.linspace(0, pulse_widths[0], len(first_frame))
 t1 = np.linspace(0, 1, len(first_frame))
 
 instantaneous_frequency = sh.cwt_instantaneous_frequency(out, freqs)
-map_instantaneous_frequency = sh.map_values_tb(instantaneous_frequency, 7000, 17000)
+map_instantaneous_frequency = sh.map_values_tb(instantaneous_frequency, f0, f1)
 
 filename_instan = f"instan/{frequency_str_parts[0]}_instantaneous_freq.csv"
 filename_map_instan = f"instan/{frequency_str_parts[0]}_map_instantaneous_freq.csv"
@@ -134,7 +135,7 @@ np.savetxt(filename_map_instan, map_instantaneous_frequency, delimiter=",")
 degree = 31
 poly_fit_norm = Polynomial.fit(t1, map_instantaneous_frequency, degree)
 poly_freq = poly_fit_norm(t1)
-mapped_poly_freq = sh.map_values_tb(poly_freq, 7000, 17000, reverse=True)
+mapped_poly_freq = sh.map_values_tb(poly_freq, f0, f1, reverse=True)
 
 # Ограничим частоту диапазоном от 7 до 17 кГц
 # freq_t = np.clip(freq_t, 7e3, 17e3)

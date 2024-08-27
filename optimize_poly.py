@@ -3,10 +3,18 @@ import matplotlib.pyplot as plt
 from numpy.polynomial import Polynomial
 from scipy.io import wavfile
 import signal_helper as sh
+import re
+
+# signal_type = "1834cs1"
+signal_type = "1707cs1"
+match = re.search(r"(\d{2})(\d{2})", signal_type)
+f1 = int(match.group(1)) * 1000  # Первая часть числа
+f0 = int(match.group(2)) * 1000  # Вторая часть числа
+print(f"f1 = {f1} Гц, f0 = {f0} Гц")
 
 # Загрузка данных из CSV файла с использованием numpy
-data = np.loadtxt("instantaneous_frequency.csv", delimiter=",")
-sample_rate, signal = wavfile.read("first_frame.wav")
+data = np.loadtxt(f"instan/{signal_type}_map_instantaneous_freq.csv", delimiter=",")
+sample_rate, signal = wavfile.read(f"wav/{signal_type}_first_frame.wav")
 signal = sh.normalize(signal)
 
 print(f"Частота дискретизации: {sample_rate}")
@@ -28,7 +36,7 @@ for degree in r:
     p = Polynomial.fit(x, y, degree)
     y_poly_pred = p(x)
     approximations.append(y_poly_pred)
-    mapped_poly_freq = sh.map_values_reverse(y_poly_pred, 0, 1, 7000, 17000)
+    mapped_poly_freq = sh.map_values_tb(y_poly_pred, f0, f1, reverse=True)
     synthesized_chirp = sh.freq_to_chirp(mapped_poly_freq, sample_rate, initial_phase)
     chirps.append(synthesized_chirp)
     max_corr, correlation, signal_lendata = sh.compute_correlation(
@@ -40,6 +48,10 @@ for degree in r:
 max_correlation = max(correlations)
 best_degree = correlations.index(max_correlation) + 1
 best_chirp_index = np.argmax(correlations)
+
+print(
+    f"Лучшая степень полинома: {best_degree}, Максимальная корреляция: {max_correlation:.4f}"
+)
 
 # Создаем фигуру и оси для нескольких графиков
 fig, axs = plt.subplots(3, 1, figsize=(12, 18))
@@ -76,10 +88,6 @@ axs[2].set_xlabel("Время (с)")
 axs[2].set_ylabel("Амплитуда")
 axs[2].grid(True)
 axs[2].legend()
-
-print(
-    f"Лучшая степень полинома: {best_degree}, Максимальная корреляция: {max_correlation:.4f}"
-)
 
 plt.tight_layout()
 plt.show()
