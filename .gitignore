@@ -164,3 +164,4 @@ cython_debug/
 *.wav
 *.csv
 *.json
+*.barb
