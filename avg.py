@@ -4,53 +4,89 @@ import numpy as np
 from scipy.signal import chirp
 import signal_helper as sh
 import json
+import re
+from numpy.polynomial.polynomial import Polynomial
+from scipy.interpolate import interp1d
+import fcwt
+from scipy.io import wavfile
 
 
 # Function to generate the signal
-def generate_signal(
-    fs, f0, f1, t1, t2, pause, num_sine_periods=8, amp_reduction_factor=0.2
-):
-    signal = []
+def generate_signal(params, polynomial_data, fs):
+    f0 = params.get("f0")
+    f1 = params.get("f1")
+    dir = params.get("chirp_directions", -1)
+    pulse_widths = params.get("pulse_widths")
+    pauses = params.get("pauses")
+    intervals = params.get("intervals")
+    initial_phase = params.get("initial_phase")
 
-    # First chirp
-    # signal.extend(generate_chirp(f0, f1, t1, fs))
-    signal.extend(
-        sh.generate_sin_chirp(f1, f0, t1, fs, num_sine_periods, amp_reduction_factor)
-    )
-    signal.extend(np.zeros(int(fs * pause)))
+    print(f"pulses = {pauses}")
+
+    polynomial_type = polynomial_data.get("type", "Unknown")
+
+    if polynomial_type == "Unknown":
+        print("Unknown polynomial type")
+        return
+
+    x = np.linspace(0, 1, int(pulse_widths[0] * fs))
+
+    if polynomial_type == "polynomial":
+        y_poly_pred = Polynomial(polynomial_data.get("coefficients"))(x)
+    elif polynomial_type == "spline":
+        y_poly_pred
+    elif polynomial_type == "linear":
+        y_poly_pred
+    elif polynomial_type == "quadratic":
+        y_poly_pred
+    elif polynomial_type == "cubic":
+        y_poly_pred
+    elif polynomial_type == "hermite":
+        y_poly_pred = sh.create_hermite_spline(polynomial_data, x)
+
+    signal = []
+    # y_poly_pred = poly(x)
+    mapped_poly_freq = sh.map_values_tb(y_poly_pred, f0, f1, reverse=True)
+    synthesized_chirp = sh.freq_to_chirp(mapped_poly_freq, fs, initial_phase)
+
+    signal.extend(synthesized_chirp)
+    signal.extend(np.zeros(int(fs * pauses[0][2])))
 
     # Second and third chirps
     for _ in range(2):
-        signal.extend(sh.generate_chirp(f1, f0, t1, fs))
-        signal.extend(np.zeros(int(fs * pause)))
+        signal.extend(sh.generate_chirp(f1, f0, pulse_widths[1], fs))
+        signal.extend(np.zeros(int(fs * pauses[1][2])))
 
-    # Remaining chirps 34-18 kHz, 2 ms, no pause
-    for _ in range(129):
-        signal.extend(sh.generate_chirp(f1, f0, t2, fs))
+    for _ in range(intervals - 3):
+        signal.extend(sh.generate_chirp(f1, f0, pulse_widths[3], fs))
+
+    signal.extend(np.zeros(int(fs * pauses[-1][2])))
 
     return np.array(signal)
 
 
 # sampling rate (must be 750, 7500, 75000, 750000, 7500000, 75000000)
 fs = 750000.0  # Sampling frequency
-t1 = 0.0165  # Chirp duration
-t2 = 0.002  # Chirp duration
-pause = 0.0078  # Pause  ms
-f0 = 17000  # Start frequency
-f1 = 7000  # End frequency
-num_sine_periods = 7.19
-amp_reduction_factor = 0.33
+fn = 200
 
+# signal_type = "1834cs1"
+signal_type = "1707cs1"
+match = re.search(r"(\d{2})(\d{2})", signal_type)
+f1 = int(match.group(1)) * 1000  # Первая часть числа
+f0 = int(match.group(2)) * 1000  # Вторая часть числа
+print(f"f1 = {f1} Гц, f0 = {f0} Гц")
+
+with open(f"params/{signal_type}_signal_params.json", "r") as json_file:
+    params = json.load(json_file)
 
 # Загрузка параметров полинома из файла JSON
-with open("params.json", "r") as f:
+with open(f"poly/{signal_type}_params.json", "r") as f:
     polynomial_data = json.load(f)
 
-polynomial_type = polynomial_data.get("type", "Unknown")
-coefficients = polynomial_data.get("coefficients", [])
-knots = polynomial_data.get("knots", None)
+resampled_filename = f"wav/{signal_type}_resampled.wav"
+org_fs, org_signal = wavfile.read(resampled_filename)
 
-print(f"Загружен полином типа: {polynomial_type}")
+org_signal = org_signal / np.max(np.abs(org_signal))
 
 ctx = libm2k.m2kOpen()
 if ctx is None:
@@ -68,9 +104,22 @@ aout.reset()
 ctx.calibrateADC()
 ctx.calibrateDAC()
 
-signal = generate_signal(
-    fs, f0, f1, t1, t2, pause, num_sine_periods, amp_reduction_factor
-)
+signal = generate_signal(params, polynomial_data, fs)
+
+# if len(org_signal) != len(signal):
+#     min_length = min(len(org_signal), len(signal))
+#     org_signal = org_signal[:min_length]
+#     signal = signal[:min_length]
+
+# freqs, out = fcwt.cwt(signal, int(fs), f0, f1, fn)
+# out_magnitude = np.abs(out)
+# fig, axs = plt.subplots(2, 1, figsize=(12, 8))
+# t = np.arange(len(signal)) / fs
+# axs[0].plot(t, signal, label="Synthesized signal")
+# axs[0].plot(t, org_signal, linestyle="--", color="orange", label="Resampled signal")
+# axs[1].imshow(out_magnitude, extent=[0, len(signal) / fs, f0, f1], aspect="auto")
+# plt.show()
+# exit
 
 # Normalize the signal to the range [-1, 1]
 buffer2 = signal / np.max(np.abs(signal))

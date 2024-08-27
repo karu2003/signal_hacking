@@ -8,7 +8,7 @@ from scipy.io.wavfile import write
 # Пример использования
 script_path = os.path.dirname(os.path.realpath(__file__))
 filename = "barb/1707cs1.barb"
-filename = "barb/1834cs1.barb"
+# filename = "barb/1834cs1.barb"
 
 # Исходные параметрыs
 original_fs = 1e6  # 1 МГц

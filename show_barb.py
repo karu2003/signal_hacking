@@ -11,7 +11,7 @@ import signal_helper as sh
 script_path = os.path.dirname(os.path.realpath(__file__))
 
 # Чтение данных из файла
-filename = "1834cs1.barb"
+filename = "barb/1834cs1.barb"
 
 f0 = 18000  # lowest frequency
 f1 = 34000  # highest frequency

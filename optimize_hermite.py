@@ -94,6 +94,8 @@ def main():
 
     y = data
     x = np.linspace(0, 1, len(y))
+    print(f"Длина x: {len(y)}")
+    print(f"Длина x: {len(x)}")
     initial_phase = 180
     polynomial_type = "hermite"
 
@@ -107,11 +109,16 @@ def main():
         )
     )
 
-    # Сохранение параметров сплайна Эрмита в файл
     best_knots_positions = np.linspace(x.min(), x.max(), num=best_knots)
+    y_knots = np.interp(best_knots_positions, x, y)
+    dydx = np.gradient(y_knots, best_knots_positions)
+
+
     spline_params = {
         "type": polynomial_type,
-        "coefficients": best_knots_positions.tolist(),
+        "knots_positions": best_knots_positions.tolist(),
+        "knots_values": y_knots.tolist(),
+        "derivatives": dydx.tolist(),
     }
 
     with open(f"poly/{signal_type}_params.json", "w") as f:

@@ -4,6 +4,7 @@ from numpy.polynomial import Polynomial
 from scipy.io import wavfile
 import signal_helper as sh
 import re
+import json
 
 # signal_type = "1834cs1"
 signal_type = "1707cs1"
@@ -21,10 +22,15 @@ print(f"Частота дискретизации: {sample_rate}")
 print(f"Длина сигнала: {len(signal)}")
 print(f"Длина Instantaneous: {len(data)}")
 
+with open(f"params/{signal_type}_signal_params.json", "r") as json_file:
+    params = json.load(json_file)
+
+initial_phase = params.get("initial_phase", 180)
+
 # Переменная для хранения мгновенной частоты
 y = data
 x = np.linspace(0, 1, len(y))
-initial_phase = 180
+# initial_phase = 180
 
 # Список для хранения корреляций и аппроксимированных значений
 correlations = []

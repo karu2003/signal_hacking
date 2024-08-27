@@ -7,26 +7,41 @@ from scipy.io import wavfile
 import signal_helper as sh
 import multiprocessing as mp
 import sys
+import re
+
 
 # Функция для вычисления корреляции, которую можно использовать в параллельной обработке
-def compute_spline_correlation(num_knots, x, y, signal, sample_rate, initial_phase):
+def compute_spline_correlation(
+    num_knots, x, y, signal, sample_rate, initial_phase, f0, f1
+):
     # Выбираем узлы для сплайн-интерполяции
     knots = np.linspace(x.min(), x.max(), num=num_knots)
     cs = CubicSpline(knots, np.interp(knots, x, y))
-    
+
     # Оцениваем значения сплайна на всем диапазоне x
     y_spline_pred = cs(x)
-    mapped_poly_freq = sh.map_values_reverse(y_spline_pred, 0, 1, 7000, 17000)
+    # mapped_poly_freq = sh.map_values_reverse(y_spline_pred, 0, 1, 7000, 17000)
+    mapped_poly_freq = sh.map_values_tb(y_spline_pred, f0, f1, reverse=True)
     synthesized_chirp = sh.freq_to_chirp(mapped_poly_freq, sample_rate, initial_phase)
-    
+
     max_corr, _, _ = sh.compute_correlation(signal, synthesized_chirp)
     return max_corr, num_knots, y_spline_pred, synthesized_chirp
 
+
 # Основная функция
 def main():
+    signal_type = "1834cs1"
+    # signal_type = "1707cs1"
+    match = re.search(r"(\d{2})(\d{2})", signal_type)
+    f1 = int(match.group(1)) * 1000  # Первая часть числа
+    f0 = int(match.group(2)) * 1000  # Вторая часть числа
+    print(f"f1 = {f1} Гц, f0 = {f0} Гц")
+
     try:
-        data = np.loadtxt("instantaneous_frequency.csv", delimiter=",")
-        sample_rate, signal = wavfile.read("first_frame.wav")
+        data = np.loadtxt(
+            f"instan/{signal_type}_map_instantaneous_freq.csv", delimiter=","
+        )
+        sample_rate, signal = wavfile.read(f"wav/{signal_type}_first_frame.wav")
         signal = sh.normalize(signal)
     except FileNotFoundError as e:
         print(f"Файл не найден: {e}")
@@ -35,20 +50,30 @@ def main():
         print(f"Ошибка при загрузке данных: {e}")
         sys.exit(1)
 
+    with open(f"params/{signal_type}_signal_params.json", "r") as json_file:
+        params = json.load(json_file)
+    
+    initial_phase = params.get("initial_phase", 180)
+
     print(f"Частота дискретизации: {sample_rate}")
     print(f"Длина сигнала: {len(signal)}")
     print(f"Длина Instantaneous: {len(data)}")
 
     y = data
     x = np.linspace(0, 1, len(y))
-    initial_phase = 180
     polynomial_type = "spline"
 
     r = range(3, 48)
 
     # Параллельное вычисление корреляций для разных узлов сплайна
     with mp.Pool(mp.cpu_count()) as pool:
-        results = pool.starmap(compute_spline_correlation, [(num_knots, x, y, signal, sample_rate, initial_phase) for num_knots in r])
+        results = pool.starmap(
+            compute_spline_correlation,
+            [
+                (num_knots, x, y, signal, sample_rate, initial_phase, f0, f1)
+                for num_knots in r
+            ],
+        )
 
     # Извлекаем результаты и находим наилучшую корреляцию
     correlations, knots_values, approximations, chirps = zip(*results)
@@ -59,16 +84,18 @@ def main():
 
     # Получаем параметры лучшего сплайна
     best_knots_positions = np.linspace(x.min(), x.max(), num=best_knots)
-    best_spline = CubicSpline(best_knots_positions, np.interp(best_knots_positions, x, y))
+    best_spline = CubicSpline(
+        best_knots_positions, np.interp(best_knots_positions, x, y)
+    )
 
     # Сохранение параметров сплайна в файл
     spline_params = {
         "type": polynomial_type,
         "knots": best_knots_positions.tolist(),
-        "coefficients": best_spline.c.tolist()
+        "coefficients": best_spline.c.tolist(),
     }
 
-    with open("params.json", "w") as f:
+    with open(f"poly/{signal_type}_params.json", "w") as f:
         json.dump(spline_params, f)
 
     # Создаем фигуру и оси для нескольких графиков
@@ -83,8 +110,16 @@ def main():
 
     # Визуализация всех полученных кривых на одном графике
     axs[1].plot(x, y, label="Исходная мгновенная частота", color="black", linewidth=2)
-    axs[1].plot(x, best_approximation, label=f"Сплайн с {best_knots} узлами", color="red", linestyle="--")
-    axs[1].set_title("Аппроксимация мгновенной частоты сплайном с наилучшим количеством узлов")
+    axs[1].plot(
+        x,
+        best_approximation,
+        label=f"Сплайн с {best_knots} узлами",
+        color="red",
+        linestyle="--",
+    )
+    axs[1].set_title(
+        "Аппроксимация мгновенной частоты сплайном с наилучшим количеством узлов"
+    )
     axs[1].set_xlabel("Индекс")
     axs[1].set_ylabel("Частота")
     axs[1].legend()
@@ -92,7 +127,9 @@ def main():
 
     # Построим график оригинального и синтезированного сигналов
     axs[2].plot(signal, label="Оригинальный сигнал", color="black")
-    axs[2].plot(chirps[best_index], label="Синтезированный сигнал", linestyle="--", color="red")
+    axs[2].plot(
+        chirps[best_index], label="Синтезированный сигнал", linestyle="--", color="red"
+    )
     axs[2].set_title("Оригинальный и синтезированный сигналы")
     axs[2].set_xlabel("Время (с)")
     axs[2].set_ylabel("Амплитуда")
@@ -105,6 +142,7 @@ def main():
 
     plt.tight_layout()
     plt.show()
+
 
 # Запуск основной функции
 if __name__ == "__main__":

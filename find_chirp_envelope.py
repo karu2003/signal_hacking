@@ -169,7 +169,7 @@ input_signal_params = {
     "initial_phase": initial_phase,
 }
 
-params_filename = f"params/{frequency_str_parts[0]}_input_signal_params.json"
+params_filename = f"params/{frequency_str_parts[0]}_signal_params.json"
 with open(params_filename, "w") as json_file:
     json.dump(input_signal_params, json_file, indent=4)
 # print(f"Параметры входного сигнала сохранены в файл: {params_filename}")
