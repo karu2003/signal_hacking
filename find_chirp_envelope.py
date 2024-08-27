@@ -12,6 +12,7 @@ from scipy.interpolate import interp1d
 from scipy.io import wavfile
 import re
 import json
+from signal_type import signal_type
 
 script_path = os.path.dirname(os.path.realpath(__file__))
 filename = "barb/1834cs1.barb"

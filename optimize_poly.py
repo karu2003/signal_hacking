@@ -5,9 +5,10 @@ from scipy.io import wavfile
 import signal_helper as sh
 import re
 import json
+from signal_type import signal_type
 
 # signal_type = "1834cs1"
-signal_type = "1707cs1"
+# signal_type = "1707cs1"
 match = re.search(r"(\d{2})(\d{2})", signal_type)
 f1 = int(match.group(1)) * 1000  # Первая часть числа
 f0 = int(match.group(2)) * 1000  # Вторая часть числа
@@ -29,8 +30,9 @@ initial_phase = params.get("initial_phase", 180)
 
 # Переменная для хранения мгновенной частоты
 y = data
-x = np.linspace(0, 1, len(y))
+x = np.linspace(0, 1, len(data))
 # initial_phase = 180
+polynomial_type = "polynomial"
 
 # Список для хранения корреляций и аппроксимированных значений
 correlations = []
@@ -54,6 +56,19 @@ for degree in r:
 max_correlation = max(correlations)
 best_degree = correlations.index(max_correlation) + 1
 best_chirp_index = np.argmax(correlations)
+
+# Сохраняем коэффициенты лучшего полинома в файл JSON
+best_polynomial = Polynomial.fit(x, y, best_degree)
+coefficients = best_polynomial.convert().coef.tolist()  # Преобразуем коэффициенты в список
+
+spline_params = {
+    "type": polynomial_type,
+    "degree": best_degree,
+    "coefficients": coefficients
+}
+
+with open(f"poly/{signal_type}_params.json", "w") as f:
+    json.dump(spline_params, f)
 
 print(
     f"Лучшая степень полинома: {best_degree}, Максимальная корреляция: {max_correlation:.4f}"

@@ -10,6 +10,7 @@ from scipy.interpolate import CubicSpline
 from scipy.interpolate import interp1d
 import fcwt
 from scipy.io import wavfile
+from signal_type import signal_type
 
 
 # Function to generate the signal
@@ -33,7 +34,10 @@ def generate_signal(params, polynomial_data, fs):
     x = np.linspace(0, 1, int(pulse_widths[0] * fs))
 
     if polynomial_type == "polynomial":
-        y_poly_pred = Polynomial(polynomial_data.get("coefficients"))(x)
+        poly = Polynomial(polynomial_data.get("coefficients"))
+        y_poly_pred = poly(x)
+        plt.plot(x, y_poly_pred)
+        plt.show()
     elif polynomial_type == "spline":
         y_poly_pred = sh.create_cubic_spline(polynomial_data, x)
     elif polynomial_type == "linear":
@@ -51,17 +55,17 @@ def generate_signal(params, polynomial_data, fs):
     synthesized_chirp = sh.freq_to_chirp(mapped_poly_freq, fs, initial_phase)
 
     signal.extend(synthesized_chirp)
-    signal.extend(np.zeros(int(fs * pauses[0][2])))
+    # signal.extend(np.zeros(int(fs * pauses[0][2])))
 
-    # Second and third chirps
-    for _ in range(2):
-        signal.extend(sh.generate_chirp(f1, f0, pulse_widths[1], fs))
-        signal.extend(np.zeros(int(fs * pauses[1][2])))
+    # # Second and third chirps
+    # for _ in range(2):
+    #     signal.extend(sh.generate_chirp(f1, f0, pulse_widths[1], fs))
+    #     signal.extend(np.zeros(int(fs * pauses[1][2])))
 
-    for _ in range(intervals - 3):
-        signal.extend(sh.generate_chirp(f1, f0, pulse_widths[3], fs))
+    # for _ in range(intervals - 3):
+    #     signal.extend(sh.generate_chirp(f1, f0, pulse_widths[3], fs))
 
-    signal.extend(np.zeros(int(fs * pauses[-1][2])))
+    # signal.extend(np.zeros(int(fs * pauses[-1][2])))
 
     return np.array(signal)
 
@@ -70,7 +74,7 @@ def generate_signal(params, polynomial_data, fs):
 fs = 750000.0  # Sampling frequency
 fn = 200
 
-signal_type = "1834cs1"
+# signal_type = "1834cs1"
 # signal_type = "1707cs1"
 match = re.search(r"(\d{2})(\d{2})", signal_type)
 f1 = int(match.group(1)) * 1000  # Первая часть числа
@@ -83,6 +87,13 @@ with open(f"params/{signal_type}_signal_params.json", "r") as json_file:
 # Загрузка параметров полинома из файла JSON
 with open(f"poly/{signal_type}_params.json", "r") as f:
     polynomial_data = json.load(f)
+
+if polynomial_data.get("type") == "polynomial":
+    degree = polynomial_data.get("degree")
+    coefficients = polynomial_data.get("coefficients")
+    if len(coefficients) != degree + 1:
+        raise ValueError("Количество коэффициентов не соответствует заявленной степени.")
+    
 
 resampled_filename = f"wav/{signal_type}_resampled.wav"
 org_fs, org_signal = wavfile.read(resampled_filename)
@@ -104,7 +115,7 @@ axs[0].plot(t, signal, label="Synthesized signal")
 axs[0].plot(t, org_signal, linestyle="--", color="orange", label="Resampled signal")
 axs[1].imshow(out_magnitude, extent=[0, len(signal) / fs, f0, f1], aspect="auto")
 plt.show()
-exit
+exit()
 
 ctx = libm2k.m2kOpen()
 if ctx is None:

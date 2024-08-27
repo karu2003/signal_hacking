@@ -8,6 +8,7 @@ import signal_helper as sh
 import multiprocessing as mp
 import sys
 import re
+from signal_type import signal_type
 
 # Функция для вычисления корреляции, которую можно использовать в параллельной обработке
 def compute_spline_correlation(
@@ -27,7 +28,7 @@ def compute_spline_correlation(
 
 # Основная функция
 def main():
-    signal_type = "1834cs1"
+    # signal_type = "1834cs1"
     # signal_type = "1707cs1"
     match = re.search(r"(\d{2})(\d{2})", signal_type)
     f1 = int(match.group(1)) * 1000  # Первая часть числа
