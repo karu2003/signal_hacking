@@ -1,4 +1,4 @@
-import libm2k
+# import libm2k
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.signal import chirp
@@ -6,6 +6,7 @@ import signal_helper as sh
 import json
 import re
 from numpy.polynomial.polynomial import Polynomial
+from scipy.interpolate import CubicSpline
 from scipy.interpolate import interp1d
 import fcwt
 from scipy.io import wavfile
@@ -34,7 +35,7 @@ def generate_signal(params, polynomial_data, fs):
     if polynomial_type == "polynomial":
         y_poly_pred = Polynomial(polynomial_data.get("coefficients"))(x)
     elif polynomial_type == "spline":
-        y_poly_pred
+        y_poly_pred = sh.create_cubic_spline(polynomial_data, x)
     elif polynomial_type == "linear":
         y_poly_pred
     elif polynomial_type == "quadratic":
@@ -69,8 +70,8 @@ def generate_signal(params, polynomial_data, fs):
 fs = 750000.0  # Sampling frequency
 fn = 200
 
-# signal_type = "1834cs1"
-signal_type = "1707cs1"
+signal_type = "1834cs1"
+# signal_type = "1707cs1"
 match = re.search(r"(\d{2})(\d{2})", signal_type)
 f1 = int(match.group(1)) * 1000  # Первая часть числа
 f0 = int(match.group(2)) * 1000  # Вторая часть числа
@@ -88,6 +89,23 @@ org_fs, org_signal = wavfile.read(resampled_filename)
 
 org_signal = org_signal / np.max(np.abs(org_signal))
 
+signal = generate_signal(params, polynomial_data, fs)
+
+if len(org_signal) != len(signal):
+    min_length = min(len(org_signal), len(signal))
+    org_signal = org_signal[:min_length]
+    signal = signal[:min_length]
+
+freqs, out = fcwt.cwt(signal, int(fs), f0, f1, fn)
+out_magnitude = np.abs(out)
+fig, axs = plt.subplots(2, 1, figsize=(12, 8))
+t = np.arange(len(signal)) / fs
+axs[0].plot(t, signal, label="Synthesized signal")
+axs[0].plot(t, org_signal, linestyle="--", color="orange", label="Resampled signal")
+axs[1].imshow(out_magnitude, extent=[0, len(signal) / fs, f0, f1], aspect="auto")
+plt.show()
+exit
+
 ctx = libm2k.m2kOpen()
 if ctx is None:
     print("Connection Error: No ADALM2000 device available/connected to your PC.")
@@ -103,23 +121,6 @@ aout.reset()
 
 ctx.calibrateADC()
 ctx.calibrateDAC()
-
-signal = generate_signal(params, polynomial_data, fs)
-
-# if len(org_signal) != len(signal):
-#     min_length = min(len(org_signal), len(signal))
-#     org_signal = org_signal[:min_length]
-#     signal = signal[:min_length]
-
-# freqs, out = fcwt.cwt(signal, int(fs), f0, f1, fn)
-# out_magnitude = np.abs(out)
-# fig, axs = plt.subplots(2, 1, figsize=(12, 8))
-# t = np.arange(len(signal)) / fs
-# axs[0].plot(t, signal, label="Synthesized signal")
-# axs[0].plot(t, org_signal, linestyle="--", color="orange", label="Resampled signal")
-# axs[1].imshow(out_magnitude, extent=[0, len(signal) / fs, f0, f1], aspect="auto")
-# plt.show()
-# exit
 
 # Normalize the signal to the range [-1, 1]
 buffer2 = signal / np.max(np.abs(signal))

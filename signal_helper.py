@@ -4,6 +4,7 @@ import fcwt
 from scipy.signal import chirp, hilbert, sweep_poly, correlate
 from scipy.optimize import curve_fit
 from scipy.interpolate import CubicHermiteSpline
+from scipy.interpolate import CubicSpline
 
 
 def convert_phase_to_radians(initial_phase_degrees):
@@ -362,19 +363,27 @@ def determine_chirp_direction(intervals, sample_rate, instantaneous_frequency):
             else:
                 direction = -1
         else:
-            direction = (
-                0  # В случае недостаточного количества точек данных
-            )
+            direction = 0  # В случае недостаточного количества точек данных
 
         chirp_directions.append(direction)
 
     return chirp_directions
+
 
 def create_hermite_spline(spline_params, x):
     """Создает сплайн Эрмита на основе загруженных параметров."""
     coefficients = np.array(spline_params["knots_positions"])
     y_knots = np.array(spline_params["knots_values"])
     dydx = np.array(spline_params["derivatives"])
-
     hermite_spline = CubicHermiteSpline(coefficients, y_knots, dydx)
     return hermite_spline(x)
+
+
+def create_cubic_spline(spline_params, x):
+    knots = np.array(spline_params["knots"])
+    # Восстанавливаем сплайн с использованием значений y в узлах.
+    y_values_at_knots = np.array(spline_params["y_values_at_knots"])
+    extrapolate = spline_params["extrapolate"]
+    # Создаем кубический сплайн, используя узлы и соответствующие значения y
+    cubic_spline = CubicSpline(knots, y_values_at_knots, extrapolate=extrapolate)
+    return cubic_spline(x)

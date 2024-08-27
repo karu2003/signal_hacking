@@ -9,7 +9,6 @@ import multiprocessing as mp
 import sys
 import re
 
-
 # Функция для вычисления корреляции, которую можно использовать в параллельной обработке
 def compute_spline_correlation(
     num_knots, x, y, signal, sample_rate, initial_phase, f0, f1
@@ -20,13 +19,11 @@ def compute_spline_correlation(
 
     # Оцениваем значения сплайна на всем диапазоне x
     y_spline_pred = cs(x)
-    # mapped_poly_freq = sh.map_values_reverse(y_spline_pred, 0, 1, 7000, 17000)
     mapped_poly_freq = sh.map_values_tb(y_spline_pred, f0, f1, reverse=True)
     synthesized_chirp = sh.freq_to_chirp(mapped_poly_freq, sample_rate, initial_phase)
 
     max_corr, _, _ = sh.compute_correlation(signal, synthesized_chirp)
-    return max_corr, num_knots, y_spline_pred, synthesized_chirp
-
+    return max_corr, num_knots, y_spline_pred, synthesized_chirp, cs
 
 # Основная функция
 def main():
@@ -52,7 +49,7 @@ def main():
 
     with open(f"params/{signal_type}_signal_params.json", "r") as json_file:
         params = json.load(json_file)
-    
+
     initial_phase = params.get("initial_phase", 180)
 
     print(f"Частота дискретизации: {sample_rate}")
@@ -76,23 +73,20 @@ def main():
         )
 
     # Извлекаем результаты и находим наилучшую корреляцию
-    correlations, knots_values, approximations, chirps = zip(*results)
+    correlations, knots_values, approximations, chirps, splines = zip(*results)
     max_correlation = max(correlations)
     best_index = correlations.index(max_correlation)
     best_knots = knots_values[best_index]
-    best_approximation = approximations[best_index]
+    best_spline = splines[best_index]
 
     # Получаем параметры лучшего сплайна
     best_knots_positions = np.linspace(x.min(), x.max(), num=best_knots)
-    best_spline = CubicSpline(
-        best_knots_positions, np.interp(best_knots_positions, x, y)
-    )
 
-    # Сохранение параметров сплайна в файл
     spline_params = {
         "type": polynomial_type,
         "knots": best_knots_positions.tolist(),
-        "coefficients": best_spline.c.tolist(),
+        "y_values_at_knots": best_spline(best_knots_positions).tolist(),  # Сохраняем значения y в узлах
+        "extrapolate": best_spline.extrapolate
     }
 
     with open(f"poly/{signal_type}_params.json", "w") as f:
@@ -112,7 +106,7 @@ def main():
     axs[1].plot(x, y, label="Исходная мгновенная частота", color="black", linewidth=2)
     axs[1].plot(
         x,
-        best_approximation,
+        approximations[best_index],
         label=f"Сплайн с {best_knots} узлами",
         color="red",
         linestyle="--",

@@ -15,14 +15,14 @@ import json
 
 script_path = os.path.dirname(os.path.realpath(__file__))
 filename = "barb/1834cs1.barb"
-filename = "barb/1707cs1.barb"
+# filename = "barb/1707cs1.barb"
 # filename = "wav/1707cs1_resampled.wav"
 
 f0 = 7000  # Начальная частота
 f1 = 17000  # Конечная частота
 fn = 200  # Количество коэффициентов
-threshold = 0.6  # Пороговое значение для огибающей CWT
-threshold_p = 0.2
+threshold = 0.55  # Пороговое значение для огибающей CWT
+threshold_p = 0.1 # 0.2
 
 type_f = None
 
@@ -67,7 +67,7 @@ else:
 # Найти индексы, где сигнал переходит через ноль
 zero_crossings = np.where(np.diff(np.signbit(signal_data)))[0]
 
-threshold_amplitude = 0.01  # Пороговое значение амплитуды для определения паузы
+threshold_amplitude = 0.001  # Пороговое значение амплитуды для определения паузы
 
 for i in range(len(signal_data)):
     if np.abs(signal_data[[i]]) > threshold_amplitude:
@@ -77,7 +77,7 @@ for i in range(len(signal_data)):
 # start_index = zero_crossings[0]
 # print(f"Начальный индекс сигнала после исключения паузы: {start_index}")
 
-cross_zero = int((sample_rate / max(f0, f1)) + 5)
+cross_zero = int((sample_rate / max(f0, f1)) + 10)
 
 for i in range(1, len(zero_crossings)):
     if zero_crossings[i] - zero_crossings[i - 1] > cross_zero:
