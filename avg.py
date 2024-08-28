@@ -1,4 +1,4 @@
-# import libm2k
+import libm2k
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.signal import chirp
@@ -33,6 +33,8 @@ def generate_signal(params, polynomial_data, fs):
 
     x = np.linspace(0, 1, int(pulse_widths[0] * fs))
 
+    # signal.extend(np.zeros(int(fs * pauses[0][2])))
+
     if polynomial_type == "polynomial":
         poly = Polynomial(polynomial_data.get("coefficients"))
         y_poly_pred = poly(x)
@@ -55,17 +57,17 @@ def generate_signal(params, polynomial_data, fs):
     synthesized_chirp = sh.freq_to_chirp(mapped_poly_freq, fs, initial_phase)
 
     signal.extend(synthesized_chirp)
-    # signal.extend(np.zeros(int(fs * pauses[0][2])))
+    signal.extend(np.zeros(int(fs * pauses[0][2])))
 
-    # # Second and third chirps
-    # for _ in range(2):
-    #     signal.extend(sh.generate_chirp(f1, f0, pulse_widths[1], fs))
-    #     signal.extend(np.zeros(int(fs * pauses[1][2])))
+    # Second and third chirps
+    for _ in range(2):
+        signal.extend(sh.generate_chirp(f1, f0, pulse_widths[1], fs))
+        signal.extend(np.zeros(int(fs * pauses[1][2])))
 
-    # for _ in range(intervals - 3):
-    #     signal.extend(sh.generate_chirp(f1, f0, pulse_widths[3], fs))
+    for _ in range(intervals - 3):
+        signal.extend(sh.generate_chirp(f1, f0, pulse_widths[3], fs))
 
-    # signal.extend(np.zeros(int(fs * pauses[-1][2])))
+    signal.extend(np.zeros(int(fs * pauses[-1][2])))
 
     return np.array(signal)
 
@@ -73,6 +75,7 @@ def generate_signal(params, polynomial_data, fs):
 # sampling rate (must be 750, 7500, 75000, 750000, 7500000, 75000000)
 fs = 750000.0  # Sampling frequency
 fn = 200
+window = 100
 
 # signal_type = "1834cs1"
 # signal_type = "1707cs1"
@@ -92,30 +95,38 @@ if polynomial_data.get("type") == "polynomial":
     degree = polynomial_data.get("degree")
     coefficients = polynomial_data.get("coefficients")
     if len(coefficients) != degree + 1:
-        raise ValueError("Количество коэффициентов не соответствует заявленной степени.")
-    
+        raise ValueError(
+            "Количество коэффициентов не соответствует заявленной степени."
+        )
+
 
 resampled_filename = f"wav/{signal_type}_resampled.wav"
 org_fs, org_signal = wavfile.read(resampled_filename)
 
 org_signal = org_signal / np.max(np.abs(org_signal))
-
 signal = generate_signal(params, polynomial_data, fs)
 
-if len(org_signal) != len(signal):
-    min_length = min(len(org_signal), len(signal))
-    org_signal = org_signal[:min_length]
-    signal = signal[:min_length]
+# pauses = params.get("pauses")
 
-freqs, out = fcwt.cwt(signal, int(fs), f0, f1, fn)
-out_magnitude = np.abs(out)
-fig, axs = plt.subplots(2, 1, figsize=(12, 8))
-t = np.arange(len(signal)) / fs
-axs[0].plot(t, signal, label="Synthesized signal")
-axs[0].plot(t, org_signal, linestyle="--", color="orange", label="Resampled signal")
-axs[1].imshow(out_magnitude, extent=[0, len(signal) / fs, f0, f1], aspect="auto")
-plt.show()
-exit()
+# jump = int((pauses[0][0] * fs) - window / 2)
+
+# org_signal = org_signal[0: window]
+# signal = signal[0: window]
+
+# if len(org_signal) != len(signal):
+#     min_length = min(len(org_signal), len(signal))
+#     org_signal = org_signal[:min_length]
+#     signal = signal[:min_length]
+
+# freqs, out = fcwt.cwt(signal, int(fs), f0, f1, fn)
+# out_magnitude = np.abs(out)
+# fig, axs = plt.subplots(2, 1, figsize=(12, 8))
+# t = np.arange(len(signal)) / fs
+# axs[0].plot(signal, label="Synthesized signal")
+# axs[0].plot(org_signal, linestyle="--", color="orange", label="Resampled signal")
+# axs[1].imshow(out_magnitude, extent=[0, len(signal) / fs, f0, f1], aspect="auto")
+# plt.show()
+# exit()
 
 ctx = libm2k.m2kOpen()
 if ctx is None:

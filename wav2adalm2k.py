@@ -6,16 +6,21 @@ from scipy.signal import chirp
 from scipy.io import wavfile
 import signal_helper as sh
 import fcwt
+from signal_type import signal_type
 
 # sampling rate (must be 750, 7500, 75000, 750000, 7500000, 75000000)
 fs = 750000.0  # Sampling frequency
 target_rms = 0.1  # 100 мВ
 
-sample_rate, data = wavfile.read("resampled_signal.wav")
+resampled_filename = f"wav/{signal_type}_resampled.wav"
+sample_rate, data = wavfile.read(resampled_filename)
+
+
 if sample_rate != fs:
     print(f"Error: Sample rate of the WAV file ({sample_rate} Hz) does not match the device sample rate ({fs} Hz).")
     exit(1)
 
+print(f"Data length: {len(data)}")
 data = data.astype(np.float64)
 rms_value = np.sqrt(np.mean(data**2))
 scaling_factor = target_rms / rms_value
