@@ -57,17 +57,17 @@ def generate_signal(params, polynomial_data, fs):
     synthesized_chirp = sh.freq_to_chirp(mapped_poly_freq, fs, initial_phase)
 
     signal.extend(synthesized_chirp)
-    signal.extend(np.zeros(int(fs * pauses[0][2])))
+    signal.extend(np.zeros(int(fs * pauses[0])))
 
     # Second and third chirps
     for _ in range(2):
         signal.extend(sh.generate_chirp(f1, f0, pulse_widths[1], fs))
-        signal.extend(np.zeros(int(fs * pauses[1][2])))
+        signal.extend(np.zeros(int(fs * pauses[1])))
 
     for _ in range(intervals - 3):
-        signal.extend(sh.generate_chirp(f1, f0, pulse_widths[3], fs))
+        signal.extend(sh.generate_chirp(f1, f0, pulse_widths[3]/(intervals - 3), fs))
 
-    signal.extend(np.zeros(int(fs * pauses[-1][2])))
+    # signal.extend(np.zeros(int(fs * pauses[2])))
 
     return np.array(signal)
 

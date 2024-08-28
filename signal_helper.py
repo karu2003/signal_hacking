@@ -5,6 +5,7 @@ from scipy.signal import chirp, hilbert, sweep_poly, correlate
 from scipy.optimize import curve_fit
 from scipy.interpolate import CubicHermiteSpline
 from scipy.interpolate import CubicSpline
+from scipy.signal import hilbert, butter, filtfilt
 
 
 def convert_phase_to_radians(initial_phase_degrees):
@@ -387,3 +388,15 @@ def create_cubic_spline(spline_params, x):
     # Создаем кубический сплайн, используя узлы и соответствующие значения y
     cubic_spline = CubicSpline(knots, y_values_at_knots, extrapolate=extrapolate)
     return cubic_spline(x)
+
+# Низкочастотный фильтр Баттерворта
+def butter_lowpass(cutoff, fs, order=5):
+    nyq = 0.5 * fs  # Частота Найквиста
+    normal_cutoff = cutoff / nyq
+    b, a = butter(order, normal_cutoff, btype='low', analog=False)
+    return b, a
+
+def lowpass_filter(data, cutoff, fs, order=5):
+    b, a = butter_lowpass(cutoff, fs, order=order)
+    y = filtfilt(b, a, data)
+    return y

@@ -15,8 +15,8 @@ import json
 from signal_type import signal_type
 
 script_path = os.path.dirname(os.path.realpath(__file__))
-filename = "barb/1834cs1.barb"
-# filename = "barb/1707cs1.barb"
+# filename = "barb/1834cs1.barb"
+filename = "barb/1707cs1.barb"
 # filename = "wav/1707cs1_resampled.wav"
 
 f0 = 7000  # Начальная частота
@@ -67,6 +67,40 @@ else:
 
 # Найти индексы, где сигнал переходит через ноль
 zero_crossings = np.where(np.diff(np.signbit(signal_data)))[0]
+
+analytic_signal = hilbert(signal_data)
+envelope = np.abs(analytic_signal)
+envelope_normalized = envelope / np.max(envelope)
+
+cutoff_freq = 2000  # Частота среза фильтра, Гц (можно регулировать)
+envelope_normalized = sh.lowpass_filter(envelope_normalized, cutoff=cutoff_freq, fs=sample_rate)
+
+threshold_s = 0.1
+above_threshold = envelope_normalized > threshold
+frame_indices = np.diff(above_threshold.astype(int))
+start_indices = np.where(frame_indices == 1)[0] + 1
+end_indices = np.where(frame_indices == -1)[0]
+
+# Вычисление длины фреймов и пауз
+frame_lengths = (end_indices - start_indices) / sample_rate  # Длины фреймов в секундах
+pause_lengths = (start_indices[1:] - end_indices[:-1]) / sample_rate  # Длины пауз между фреймами
+
+# print(f"Длины фреймов: {frame_lengths}")
+# print(f"Длины пауз: {pause_lengths}")
+# t = np.linspace(0, len(signal_data) / sample_rate, len(signal_data), endpoint=False) 
+# plt.figure(figsize=(15, 6))
+# plt.plot(t, signal_data, label='Сигнал')
+# plt.plot(t, envelope_normalized, label='Огибающая (фильтрованная)', color='orange')
+# plt.axhline(threshold_s, color='purple', linestyle='--', label='Порог')
+# plt.scatter(t[start_indices], envelope_normalized[start_indices], color='red', label='Начало фреймов')
+# plt.scatter(t[end_indices], envelope_normalized[end_indices], color='green', label='Конец фреймов')
+# plt.xlabel('Время (с)')
+# plt.ylabel('Амплитуда')
+# plt.title('Определение фреймов и пауз')
+# plt.legend()
+# plt.grid(True)
+# plt.show()
+# exit()
 
 threshold_amplitude = 0.001  # Пороговое значение амплитуды для определения паузы
 
@@ -164,8 +198,10 @@ input_signal_params = {
     "f1": f1,
     "sample_rate": sample_rate,
     "chirp_directions": chirp_directions,
-    "pulse_widths": [round(pw, 3) for pw in pulse_widths],
-    "pauses": pauses,
+    # "pulse_widths": [round(pw, 3) for pw in pulse_widths],
+    "pulse_widths": frame_lengths.tolist(),
+    # "pauses": pauses,
+    "pauses": pause_lengths.tolist(),
     "intervals": len(intervals),
     "initial_phase": initial_phase,
 }
