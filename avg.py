@@ -1,4 +1,3 @@
-import libm2k
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.signal import chirp
@@ -107,9 +106,7 @@ org_signal = org_signal / np.max(np.abs(org_signal))
 signal = generate_signal(params, polynomial_data, fs)
 
 # pauses = params.get("pauses")
-
 # jump = int((pauses[0][0] * fs) - window / 2)
-
 # org_signal = org_signal[0: window]
 # signal = signal[0: window]
 
@@ -128,6 +125,7 @@ signal = generate_signal(params, polynomial_data, fs)
 # plt.show()
 # exit()
 
+import libm2k
 ctx = libm2k.m2kOpen()
 if ctx is None:
     print("Connection Error: No ADALM2000 device available/connected to your PC.")
