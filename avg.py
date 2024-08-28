@@ -158,7 +158,7 @@ aout.enableChannel(1, True)
 time_array = np.linspace(0, 1, samples)
 
 rms_value = np.sqrt(np.mean(buffer2**2))
-target_rms = 0.045  # 100 мВ
+target_rms = 0.1/2  # 100 мВ
 scaling_factor = target_rms / rms_value
 buffer2 *= scaling_factor
 
