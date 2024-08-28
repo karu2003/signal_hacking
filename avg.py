@@ -38,8 +38,8 @@ def generate_signal(params, polynomial_data, fs):
     if polynomial_type == "polynomial":
         poly = Polynomial(polynomial_data.get("coefficients"))
         y_poly_pred = poly(x)
-        plt.plot(x, y_poly_pred)
-        plt.show()
+        # plt.plot(x, y_poly_pred)
+        # plt.show()
     elif polynomial_type == "spline":
         y_poly_pred = sh.create_cubic_spline(polynomial_data, x)
     elif polynomial_type == "linear":
@@ -160,7 +160,7 @@ aout.enableChannel(1, True)
 time_array = np.linspace(0, 1, samples)
 
 rms_value = np.sqrt(np.mean(buffer2**2))
-target_rms = 0.1  # 100 мВ
+target_rms = 0.045  # 100 мВ
 scaling_factor = target_rms / rms_value
 buffer2 *= scaling_factor
 

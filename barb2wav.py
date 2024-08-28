@@ -4,6 +4,31 @@ from scipy.signal import resample
 import os
 from barbutils import load_barb
 from scipy.io.wavfile import write
+from scipy.signal import firwin, lfilter
+
+
+def manual_resample(signal, original_fs, target_fs):
+    """
+    Ресамплинг сигнала вниз с использованием фильтрации и децимации.
+
+    :param signal: Исходный сигнал (массив NumPy)
+    :param original_fs: Исходная частота дискретизации
+    :param target_fs: Целевая частота дискретизации
+    :return: Ресамплированный сигнал
+    """
+    # Применение фильтра низких частот
+    nyquist_rate = original_fs / 2.0
+    cutoff_hz = target_fs / 2.0
+    numtaps = 101
+    fir_coeff = firwin(numtaps, cutoff_hz / nyquist_rate)
+    filtered_signal = lfilter(fir_coeff, 1.0, signal)
+
+    # Выбор каждого n-го отсчета
+    decimation_factor = int(original_fs / target_fs)
+    resampled_signal = filtered_signal[::decimation_factor]
+
+    return resampled_signal
+
 
 # Пример использования
 script_path = os.path.dirname(os.path.realpath(__file__))
@@ -45,6 +70,9 @@ num_samples = int(len(signal) * (target_fs / original_fs))
 # Ресамплинг
 try:
     resampled_signal = resample(signal, num_samples)
+    # resampled_signal = manual_resample(signal, original_fs, target_fs)
+    print(f"Len org {len(signal)}")
+    print(f"len res {len(resampled_signal)}")
 except Exception as e:
     print(f"Ошибка при ресамплинге: {e}")
     exit()
