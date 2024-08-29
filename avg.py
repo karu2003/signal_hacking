@@ -22,8 +22,6 @@ def generate_signal(params, polynomial_data, fs):
     intervals = params.get("intervals")
     initial_phase = params.get("initial_phase")
 
-    print(f"pulses = {pauses}")
-
     polynomial_type = polynomial_data.get("type", "Unknown")
 
     if polynomial_type == "Unknown":
@@ -32,13 +30,9 @@ def generate_signal(params, polynomial_data, fs):
 
     x = np.linspace(0, 1, int(pulse_widths[0] * fs))
 
-    # signal.extend(np.zeros(int(fs * pauses[0][2])))
-
     if polynomial_type == "polynomial":
         poly = Polynomial(polynomial_data.get("coefficients"))
         y_poly_pred = poly(x)
-        # plt.plot(x, y_poly_pred)
-        # plt.show()
     elif polynomial_type == "spline":
         y_poly_pred = sh.create_cubic_spline(polynomial_data, x)
     elif polynomial_type == "linear":
@@ -51,10 +45,11 @@ def generate_signal(params, polynomial_data, fs):
         y_poly_pred = sh.create_hermite_spline(polynomial_data, x)
 
     signal = []
-    # y_poly_pred = poly(x)
+
     mapped_poly_freq = sh.map_values_tb(y_poly_pred, f0, f1, reverse=True)
     synthesized_chirp = sh.freq_to_chirp(mapped_poly_freq, fs, initial_phase)
 
+    signal.extend(np.zeros(85))
     signal.extend(synthesized_chirp)
     signal.extend(np.zeros(int(fs * pauses[0])))
 
@@ -64,9 +59,11 @@ def generate_signal(params, polynomial_data, fs):
         signal.extend(np.zeros(int(fs * pauses[1])))
 
     for _ in range(intervals - 3):
-        signal.extend(sh.generate_chirp(f1, f0, pulse_widths[3]/(intervals - 3), fs))
+        signal.extend(sh.generate_chirp(f1, f0, pulse_widths[3] / (intervals - 3), fs))
 
-    # signal.extend(np.zeros(int(fs * pauses[2])))
+    signal.extend(np.zeros(31700)) # 42.27 ms 1707cs1
+    # signal.extend(np.zeros(31800)) # 42.4 ms 1834cs1
+    # signal.extend(np.zeros(40000)) 
 
     return np.array(signal)
 
@@ -101,14 +98,11 @@ if polynomial_data.get("type") == "polynomial":
 
 resampled_filename = f"wav/{signal_type}_resampled.wav"
 org_fs, org_signal = wavfile.read(resampled_filename)
+# print("Length of the resampled signal: ", len(org_signal))
 
 org_signal = org_signal / np.max(np.abs(org_signal))
 signal = generate_signal(params, polynomial_data, fs)
-
-# pauses = params.get("pauses")
-# jump = int((pauses[0][0] * fs) - window / 2)
-# org_signal = org_signal[0: window]
-# signal = signal[0: window]
+# print("Length of the synthesized signal: ", len(signal))
 
 # if len(org_signal) != len(signal):
 #     min_length = min(len(org_signal), len(signal))
@@ -126,6 +120,7 @@ signal = generate_signal(params, polynomial_data, fs)
 # exit()
 
 import libm2k
+
 ctx = libm2k.m2kOpen()
 if ctx is None:
     print("Connection Error: No ADALM2000 device available/connected to your PC.")
@@ -158,7 +153,7 @@ aout.enableChannel(1, True)
 time_array = np.linspace(0, 1, samples)
 
 rms_value = np.sqrt(np.mean(buffer2**2))
-target_rms = 0.1/2  # 100 мВ
+target_rms = 0.05  # 100 мВ
 scaling_factor = target_rms / rms_value
 buffer2 *= scaling_factor
 

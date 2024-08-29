@@ -14,7 +14,7 @@ filename = "barb/1707cs1.barb"
 
 # Исходные параметрыs
 original_fs = 1e6  # 1 МГц
-target_fs = 750e3  # 750 кГц
+target_fs = 75e3  # 750 кГц
 # target_fs = 75000 # 75 кГц
 
 try:

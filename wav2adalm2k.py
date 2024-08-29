@@ -9,7 +9,7 @@ import fcwt
 from signal_type import signal_type
 
 # sampling rate (must be 750, 7500, 75000, 750000, 7500000, 75000000)
-fs = 750000.0  # Sampling frequency
+fs = 75000.0  # Sampling frequency
 target_rms = 0.1/2  # 100 мВ
 
 resampled_filename = f"wav/{signal_type}_resampled.wav"
