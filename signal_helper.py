@@ -6,6 +6,7 @@ from scipy.optimize import curve_fit
 from scipy.interpolate import CubicHermiteSpline
 from scipy.interpolate import CubicSpline
 from scipy.signal import hilbert, butter, filtfilt
+from scipy.signal import firwin, lfilter, resample_poly
 
 
 def convert_phase_to_radians(initial_phase_degrees):
@@ -400,3 +401,67 @@ def lowpass_filter(data, cutoff, fs, order=5):
     b, a = butter_lowpass(cutoff, fs, order=order)
     y = filtfilt(b, a, data)
     return y
+
+def manual_resample_multiplicity(signal, original_fs, target_fs):
+    """
+    Ресамплинг сигнала вниз с использованием фильтрации и децимации.
+
+    :param signal: Исходный сигнал (массив NumPy)
+    :param original_fs: Исходная частота дискретизации
+    :param target_fs: Целевая частота дискретизации
+    :return: Ресамплированный сигнал
+    """
+    if original_fs <= target_fs:
+        raise ValueError("Исходная частота дискретизации должна быть больше целевой.")
+
+    # Применение фильтра низких частот
+    nyquist_rate = original_fs / 2.0
+    cutoff_hz = target_fs / 2.0
+    numtaps = 101  # Параметр размера фильтра, можно варьировать
+    fir_coeff = firwin(numtaps, cutoff_hz / nyquist_rate)
+    filtered_signal = lfilter(fir_coeff, 1.0, signal)
+
+    # Вычисление децимационного фактора и проверка его на целочисленность
+    decimation_factor = original_fs / target_fs
+    if not decimation_factor.is_integer():
+        raise ValueError(
+            "Частоты дискретизации должны быть кратны для целочисленного децимационного фактора."
+        )
+    decimation_factor = int(decimation_factor)
+
+    # Децимация - выбор каждого n-го отсчета
+    resampled_signal = filtered_signal[::decimation_factor]
+
+    return resampled_signal
+
+def manual_resample(signal, original_fs, target_fs):
+    """
+    Ресамплинг сигнала с использованием интерполяции и децимации для некратных частот.
+
+    :param signal: Исходный сигнал (массив NumPy)
+    :param original_fs: Исходная частота дискретизации
+    :param target_fs: Целевая частота дискретизации
+    :return: Ресамплированный сигнал
+    """
+    # Проверка на допустимость частот
+    if original_fs <= 0 or target_fs <= 0:
+        raise ValueError("Частоты дискретизации должны быть положительными значениями.")
+    
+    # Определение дробного коэффициента интерполяции и децимации
+    gcd = np.gcd(int(original_fs), int(target_fs))
+    up = int(target_fs / gcd)
+    down = int(original_fs / gcd)
+
+    # Фильтр низких частот (проектируем фильтр для нового Nyquist)
+    nyquist_rate = 0.5 * min(original_fs, target_fs)
+    cutoff_hz = nyquist_rate * 0.9  # небольшое снижение для предотвращения искажений
+    numtaps = 101  # количество коэффициентов фильтра
+    fir_coeff = firwin(numtaps, cutoff_hz / (0.5 * original_fs))
+    
+    # Применение фильтрации к сигналу
+    filtered_signal = lfilter(fir_coeff, 1.0, signal)
+    
+    # Ресэмплинг с помощью интерполяции и децимации
+    resampled_signal = resample_poly(filtered_signal, up, down)
+
+    return resampled_signal
