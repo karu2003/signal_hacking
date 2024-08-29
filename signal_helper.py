@@ -390,17 +390,20 @@ def create_cubic_spline(spline_params, x):
     cubic_spline = CubicSpline(knots, y_values_at_knots, extrapolate=extrapolate)
     return cubic_spline(x)
 
+
 # Низкочастотный фильтр Баттерворта
 def butter_lowpass(cutoff, fs, order=5):
     nyq = 0.5 * fs  # Частота Найквиста
     normal_cutoff = cutoff / nyq
-    b, a = butter(order, normal_cutoff, btype='low', analog=False)
+    b, a = butter(order, normal_cutoff, btype="low", analog=False)
     return b, a
+
 
 def lowpass_filter(data, cutoff, fs, order=5):
     b, a = butter_lowpass(cutoff, fs, order=order)
     y = filtfilt(b, a, data)
     return y
+
 
 def manual_resample_multiplicity(signal, original_fs, target_fs):
     """
@@ -434,6 +437,7 @@ def manual_resample_multiplicity(signal, original_fs, target_fs):
 
     return resampled_signal
 
+
 def manual_resample(signal, original_fs, target_fs):
     """
     Ресамплинг сигнала с использованием интерполяции и децимации для некратных частот.
@@ -446,7 +450,7 @@ def manual_resample(signal, original_fs, target_fs):
     # Проверка на допустимость частот
     if original_fs <= 0 or target_fs <= 0:
         raise ValueError("Частоты дискретизации должны быть положительными значениями.")
-    
+
     # Определение дробного коэффициента интерполяции и децимации
     gcd = np.gcd(int(original_fs), int(target_fs))
     up = int(target_fs / gcd)
@@ -457,11 +461,38 @@ def manual_resample(signal, original_fs, target_fs):
     cutoff_hz = nyquist_rate * 0.9  # небольшое снижение для предотвращения искажений
     numtaps = 101  # количество коэффициентов фильтра
     fir_coeff = firwin(numtaps, cutoff_hz / (0.5 * original_fs))
-    
+
     # Применение фильтрации к сигналу
     filtered_signal = lfilter(fir_coeff, 1.0, signal)
-    
+
     # Ресэмплинг с помощью интерполяции и децимации
     resampled_signal = resample_poly(filtered_signal, up, down)
 
     return resampled_signal
+
+
+def find2power(n):
+    m = 0
+    m2 = 1 << m  # 2 to the power of m
+    while m2 - n < 0:
+        m += 1
+        m2 <<= 1  # m2 = m2 * 2
+    return m
+
+def find_nearest_power_of_two(n):
+    """Находит ближайшую степень двойки для заданного числа n."""
+    if n <= 0:
+        raise ValueError("Число должно быть положительным.")
+    
+    # Находим ближайшую степень двойки
+    power = 1
+    while power < n:
+        power <<= 1  # Умножаем на 2
+    
+    # Определяем ближайшую степень двойки
+    prev_power = power >> 1  # Делим на 2, чтобы получить предыдущую степень двойки
+    if abs(n - prev_power) < abs(n - power):
+        return prev_power
+    else:
+        return power
+

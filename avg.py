@@ -49,7 +49,7 @@ def generate_signal(params, polynomial_data, fs):
     mapped_poly_freq = sh.map_values_tb(y_poly_pred, f0, f1, reverse=True)
     synthesized_chirp = sh.freq_to_chirp(mapped_poly_freq, fs, initial_phase)
 
-    signal.extend(np.zeros(85))
+    signal.extend(np.zeros(50))
     signal.extend(synthesized_chirp)
     signal.extend(np.zeros(int(fs * pauses[0])))
 
@@ -69,7 +69,7 @@ def generate_signal(params, polynomial_data, fs):
 
 
 # sampling rate (must be 750, 7500, 75000, 750000, 7500000, 75000000)
-fs = 750000.0  # Sampling frequency
+fs = 750e3  # Sampling frequency
 fn = 200
 window = 100
 

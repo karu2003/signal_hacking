@@ -23,7 +23,7 @@ f0 = 7000  # Начальная частота
 f1 = 17000  # Конечная частота
 fn = 200  # Количество коэффициентов
 threshold = 0.55  # Пороговое значение для огибающей CWT
-threshold_p = 0.1 # 0.2
+threshold_p = 0.1  # 0.2
 
 type_f = None
 
@@ -73,7 +73,9 @@ envelope = np.abs(analytic_signal)
 envelope_normalized = envelope / np.max(envelope)
 
 cutoff_freq = 2000  # Частота среза фильтра, Гц (можно регулировать)
-envelope_normalized = sh.lowpass_filter(envelope_normalized, cutoff=cutoff_freq, fs=sample_rate)
+envelope_normalized = sh.lowpass_filter(
+    envelope_normalized, cutoff=cutoff_freq, fs=sample_rate
+)
 
 threshold_s = 0.1
 above_threshold = envelope_normalized > threshold
@@ -82,21 +84,42 @@ start_indices = np.where(frame_indices == 1)[0] + 1
 end_indices = np.where(frame_indices == -1)[0]
 
 # Вычисление длины фреймов и пауз
-frame_lengths = (end_indices - start_indices) / sample_rate  # Длины фреймов в секундах
-pause_lengths = (start_indices[1:] - end_indices[:-1]) / sample_rate  # Длины пауз между фреймами
+frame_lengths = (end_indices - start_indices) / sample_rate
+pause_lengths = (start_indices[1:] - end_indices[:-1]) / sample_rate
 
-# print(f"Длины фреймов: {frame_lengths}")
-# print(f"Длины пауз: {pause_lengths}")
-# t = np.linspace(0, len(signal_data) / sample_rate, len(signal_data), endpoint=False) 
+frame_lengths = (end_indices - start_indices)
+pause_lengths = (start_indices[1:] - end_indices[:-1])
+
+for i in range(len(pause_lengths)):
+    pause_lengths[i] = sh.find_nearest_power_of_two(pause_lengths[i])
+
+pause_lengths = pause_lengths / sample_rate
+
+for i in range(len(frame_lengths)):
+    frame_lengths[i] = sh.find_nearest_power_of_two(frame_lengths[i])
+    
+frame_lengths = frame_lengths / sample_rate
+
+# t = np.linspace(0, len(signal_data) / sample_rate, len(signal_data), endpoint=False)
 # plt.figure(figsize=(15, 6))
-# plt.plot(t, signal_data, label='Сигнал')
-# plt.plot(t, envelope_normalized, label='Огибающая (фильтрованная)', color='orange')
-# plt.axhline(threshold_s, color='purple', linestyle='--', label='Порог')
-# plt.scatter(t[start_indices], envelope_normalized[start_indices], color='red', label='Начало фреймов')
-# plt.scatter(t[end_indices], envelope_normalized[end_indices], color='green', label='Конец фреймов')
-# plt.xlabel('Время (с)')
-# plt.ylabel('Амплитуда')
-# plt.title('Определение фреймов и пауз')
+# plt.plot(t, signal_data, label="Сигнал")
+# plt.plot(t, envelope_normalized, label="Огибающая (фильтрованная)", color="orange")
+# plt.axhline(threshold_s, color="purple", linestyle="--", label="Порог")
+# plt.scatter(
+#     t[start_indices],
+#     envelope_normalized[start_indices],
+#     color="red",
+#     label="Начало фреймов",
+# )
+# plt.scatter(
+#     t[end_indices],
+#     envelope_normalized[end_indices],
+#     color="green",
+#     label="Конец фреймов",
+# )
+# plt.xlabel("Время (с)")
+# plt.ylabel("Амплитуда")
+# plt.title("Определение фреймов и пауз")
 # plt.legend()
 # plt.grid(True)
 # plt.show()
@@ -129,7 +152,9 @@ intervals, pulse_widths = sh.find_pulse_widths(cwt_envelope, sample_rate, thresh
 
 freqs_inst, out_ints = fcwt.cwt(signal_data, int(sample_rate), f0, f1, fn)
 instantaneous_frequency_full = sh.cwt_instantaneous_frequency(out_ints, freqs_inst)
-chirp_directions = sh.determine_chirp_direction(intervals, sample_rate, instantaneous_frequency_full)
+chirp_directions = sh.determine_chirp_direction(
+    intervals, sample_rate, instantaneous_frequency_full
+)
 # print(f"Направления чирпа: {chirp_directions}")
 
 print(f"Частота дискретизации: {sample_rate}")
@@ -187,7 +212,9 @@ synthesized_chirp = sh.freq_to_chirp(mapped_poly_freq, sample_rate, initial_phas
 # poly_file = f"{int(sample_rate)}_poly_coefficients.txt"
 # np.savetxt(poly_file, poly_coefficients)
 
-max_corr, correlation, len_signal = sh.compute_correlation(first_frame, synthesized_chirp)
+max_corr, correlation, len_signal = sh.compute_correlation(
+    first_frame, synthesized_chirp
+)
 lag = np.arange(-len_signal + 1, len_signal)
 print(f"Максимальная нормализованная корреляция: {max_corr:.4f}")
 
@@ -303,8 +330,7 @@ ax[2][1].grid(True)
 
 ax[3][1].plot(instantaneous_frequency_full, label="Мгновенная частота", color="blue")
 
-ax[4][1].imshow(phase, extent=[0, len(first_frame), f0, f1],
-           aspect='auto', cmap='jet')
+ax[4][1].imshow(phase, extent=[0, len(first_frame), f0, f1], aspect="auto", cmap="jet")
 ax[4][1].set_title("Фаза")
 
 plt.tight_layout()
