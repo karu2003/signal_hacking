@@ -59,7 +59,8 @@ def generate_signal(params, polynomial_data, fs):
         signal.extend(np.zeros(int(fs * pauses[1])))
 
     for _ in range(intervals - 3):
-        signal.extend(sh.generate_chirp(f1, f0, pulse_widths[3] / (intervals - 3), fs))
+        # signal.extend(sh.generate_chirp(f1, f0, pulse_widths[3] / (intervals - 3), fs))
+        signal.extend(sh.generate_chirp(f1, f0, pulse_widths[-1], fs))
 
     signal.extend(np.zeros(31700)) # 42.27 ms 1707cs1
     # signal.extend(np.zeros(31800)) # 42.4 ms 1834cs1
@@ -104,20 +105,20 @@ org_signal = org_signal / np.max(np.abs(org_signal))
 signal = generate_signal(params, polynomial_data, fs)
 # print("Length of the synthesized signal: ", len(signal))
 
-# if len(org_signal) != len(signal):
-#     min_length = min(len(org_signal), len(signal))
-#     org_signal = org_signal[:min_length]
-#     signal = signal[:min_length]
+if len(org_signal) != len(signal):
+    min_length = min(len(org_signal), len(signal))
+    org_signal = org_signal[:min_length]
+    signal = signal[:min_length]
 
-# freqs, out = fcwt.cwt(signal, int(fs), f0, f1, fn)
-# out_magnitude = np.abs(out)
-# fig, axs = plt.subplots(2, 1, figsize=(12, 8))
-# t = np.arange(len(signal)) / fs
-# axs[0].plot(signal, label="Synthesized signal")
-# axs[0].plot(org_signal, linestyle="--", color="orange", label="Resampled signal")
-# axs[1].imshow(out_magnitude, extent=[0, len(signal) / fs, f0, f1], aspect="auto")
-# plt.show()
-# exit()
+freqs, out = fcwt.cwt(signal, int(fs), f0, f1, fn)
+out_magnitude = np.abs(out)
+fig, axs = plt.subplots(2, 1, figsize=(12, 8))
+t = np.arange(len(signal)) / fs
+axs[0].plot(signal, label="Synthesized signal")
+axs[0].plot(org_signal, linestyle="--", color="orange", label="Resampled signal")
+axs[1].imshow(out_magnitude, extent=[0, len(signal) / fs, f0, f1], aspect="auto")
+plt.show()
+exit()
 
 import libm2k
 

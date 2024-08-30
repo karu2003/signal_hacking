@@ -87,8 +87,8 @@ end_indices = np.where(frame_indices == -1)[0]
 frame_lengths = (end_indices - start_indices) / sample_rate
 pause_lengths = (start_indices[1:] - end_indices[:-1]) / sample_rate
 
-frame_lengths = (end_indices - start_indices)
-pause_lengths = (start_indices[1:] - end_indices[:-1])
+frame_lengths = end_indices - start_indices
+pause_lengths = start_indices[1:] - end_indices[:-1]
 
 for i in range(len(pause_lengths)):
     pause_lengths[i] = sh.find_nearest_power_of_two(pause_lengths[i])
@@ -97,7 +97,7 @@ pause_lengths = pause_lengths / sample_rate
 
 for i in range(len(frame_lengths)):
     frame_lengths[i] = sh.find_nearest_power_of_two(frame_lengths[i])
-    
+
 frame_lengths = frame_lengths / sample_rate
 
 # t = np.linspace(0, len(signal_data) / sample_rate, len(signal_data), endpoint=False)
@@ -149,6 +149,9 @@ signal_width = end_index - start_index
 cwt_envelope = sh.calculate_cwt_envelope(signal_data, sample_rate, f0, f1, fn)
 pauses = sh.find_pauses(cwt_envelope, sample_rate, threshold_p)
 intervals, pulse_widths = sh.find_pulse_widths(cwt_envelope, sample_rate, threshold)
+
+frame_lengths[-1] = sh.find_nearest_power_of_two(pulse_widths[-1] * sample_rate)/sample_rate
+
 
 freqs_inst, out_ints = fcwt.cwt(signal_data, int(sample_rate), f0, f1, fn)
 instantaneous_frequency_full = sh.cwt_instantaneous_frequency(out_ints, freqs_inst)
