@@ -152,7 +152,6 @@ intervals, pulse_widths = sh.find_pulse_widths(cwt_envelope, sample_rate, thresh
 
 frame_lengths[-1] = sh.find_nearest_power_of_two(pulse_widths[-1] * sample_rate)/sample_rate
 
-
 freqs_inst, out_ints = fcwt.cwt(signal_data, int(sample_rate), f0, f1, fn)
 instantaneous_frequency_full = sh.cwt_instantaneous_frequency(out_ints, freqs_inst)
 chirp_directions = sh.determine_chirp_direction(

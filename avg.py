@@ -44,29 +44,27 @@ def generate_signal(params, polynomial_data, fs):
     elif polynomial_type == "hermite":
         y_poly_pred = sh.create_hermite_spline(polynomial_data, x)
 
-    signal = []
-
     mapped_poly_freq = sh.map_values_tb(y_poly_pred, f0, f1, reverse=True)
     synthesized_chirp = sh.freq_to_chirp(mapped_poly_freq, fs, initial_phase)
 
-    signal.extend(np.zeros(50))
-    signal.extend(synthesized_chirp)
-    signal.extend(np.zeros(int(fs * pauses[0])))
+    signal = np.zeros(50)
+    signal = np.concatenate((signal, synthesized_chirp))
+    signal = np.concatenate((signal, np.zeros(int(fs * pauses[0]))))
 
     # Second and third chirps
     for _ in range(2):
-        signal.extend(sh.generate_chirp(f1, f0, pulse_widths[1], fs))
-        signal.extend(np.zeros(int(fs * pauses[1])))
+        signal = np.concatenate((signal, sh.generate_chirp(f1, f0, pulse_widths[1], fs)))
+        signal = np.concatenate((signal, np.zeros(int(fs * pauses[1]))))
 
-    for _ in range(intervals - 3):
-        # signal.extend(sh.generate_chirp(f1, f0, pulse_widths[3] / (intervals - 3), fs))
-        signal.extend(sh.generate_chirp(f1, f0, pulse_widths[-1], fs))
+    chirp_s = sh.generate_chirp(f1, f0, pulse_widths[-1], fs)
+    repeating_part = np.tile(chirp_s, intervals - 3)
+    signal = np.concatenate((signal, repeating_part))
 
-    signal.extend(np.zeros(31700)) # 42.27 ms 1707cs1
-    # signal.extend(np.zeros(31800)) # 42.4 ms 1834cs1
-    # signal.extend(np.zeros(40000)) 
+    signal = np.concatenate((signal, np.zeros(31700)))  # 42.27 ms 1707cs1
+    # signal = np.concatenate((signal, np.zeros(31800)))  # 42.4 ms 1834cs1
+    # signal = np.concatenate((signal, np.zeros(80000)))
 
-    return np.array(signal)
+    return signal
 
 
 # sampling rate (must be 750, 7500, 75000, 750000, 7500000, 75000000)
@@ -103,22 +101,23 @@ org_fs, org_signal = wavfile.read(resampled_filename)
 
 org_signal = org_signal / np.max(np.abs(org_signal))
 signal = generate_signal(params, polynomial_data, fs)
-# print("Length of the synthesized signal: ", len(signal))
+print("Length of the signal: ", len(org_signal))
+print("Length of the synthesized signal: ", len(signal))
 
-if len(org_signal) != len(signal):
-    min_length = min(len(org_signal), len(signal))
-    org_signal = org_signal[:min_length]
-    signal = signal[:min_length]
+# if len(org_signal) != len(signal):
+#     min_length = min(len(org_signal), len(signal))
+#     org_signal = org_signal[:min_length]
+#     signal = signal[:min_length]
 
-freqs, out = fcwt.cwt(signal, int(fs), f0, f1, fn)
-out_magnitude = np.abs(out)
-fig, axs = plt.subplots(2, 1, figsize=(12, 8))
-t = np.arange(len(signal)) / fs
-axs[0].plot(signal, label="Synthesized signal")
-axs[0].plot(org_signal, linestyle="--", color="orange", label="Resampled signal")
-axs[1].imshow(out_magnitude, extent=[0, len(signal) / fs, f0, f1], aspect="auto")
-plt.show()
-exit()
+# freqs, out = fcwt.cwt(signal, int(fs), f0, f1, fn)
+# out_magnitude = np.abs(out)
+# fig, axs = plt.subplots(2, 1, figsize=(12, 8))
+# t = np.arange(len(signal)) / fs
+# axs[0].plot(signal, label="Synthesized signal")
+# axs[0].plot(org_signal, linestyle="--", color="orange", label="Resampled signal")
+# axs[1].imshow(out_magnitude, extent=[0, len(signal) / fs, f0, f1], aspect="auto")
+# plt.show()
+# exit()
 
 import libm2k
 
@@ -144,7 +143,7 @@ samples = len(signal)
 
 # Вычисление длительности сигнала
 duration = samples / fs
-print(f"Длительность сигнала: {duration} секунд")
+# print(f"Длительность сигнала: {duration} секунд")
 
 aout.setSampleRate(0, fs)
 aout.setSampleRate(1, fs)
@@ -154,7 +153,7 @@ aout.enableChannel(1, True)
 time_array = np.linspace(0, 1, samples)
 
 rms_value = np.sqrt(np.mean(buffer2**2))
-target_rms = 0.05  # 100 мВ
+target_rms = 0.045  # 100 мВ
 scaling_factor = target_rms / rms_value
 buffer2 *= scaling_factor
 
